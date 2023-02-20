@@ -197,7 +197,6 @@ final class DownloadResponseFactory
      * Assert that disposition value is correct.
      *
      * @param string|null $disposition Disposition value.
-     * @return void
      * @throws InvalidArgumentException
      */
     private function assertDisposition(string|null $disposition): void
