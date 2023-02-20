@@ -1,19 +1,24 @@
 {
-    "name": "yiisoft/_____",
+    "name": "yiisoft/response-download",
     "type": "library",
-    "description": "_____",
+    "description": "The package provides a factory to help forming file download PSR-7 response.",
     "keywords": [
-        "_____"
+        "http",
+        "download",
+        "file",
+        "psr-7",
+        "response",
+        "yii3"
     ],
     "homepage": "https://www.yiiframework.com/",
     "license": "BSD-3-Clause",
     "support": {
-        "issues": "https://github.com/yiisoft/_____/issues?state=open",
+        "issues": "https://github.com/yiisoft/response-download/issues?state=open",
         "forum": "https://www.yiiframework.com/forum/",
         "wiki": "https://www.yiiframework.com/wiki/",
         "irc": "irc://irc.freenode.net/yii",
         "chat": "https://t.me/yii3en",
-        "source": "https://github.com/yiisoft/_____"
+        "source": "https://github.com/yiisoft/response-download"
     },
     "funding": [
         {
@@ -28,9 +33,14 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "require": {
-        "php": "^8.1"
+        "php": "^8.1",
+        "ext-fileinfo": "*",
+        "psr/http-message": "^1.0",
+        "psr/http-factory": "^1.0",
+        "yiisoft/http": "^1.2"
     },
     "require-dev": {
+        "httpsoft/http-message": "^1.0",
         "phpunit/phpunit": "^9.5",
         "rector/rector": "^0.14.3",
         "roave/infection-static-analysis-plugin": "^1.16",
@@ -39,12 +49,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Yiisoft\\_____\\": "src"
+            "Yiisoft\\ResponseDownload\\": "src"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Yiisoft\\_____\\Tests\\": "tests"
+            "Yiisoft\\ResponseDownload\\Tests\\": "tests"
         }
     },
     "config": {
