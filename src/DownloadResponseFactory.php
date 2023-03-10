@@ -71,10 +71,10 @@ final class DownloadResponseFactory
      */
     public function xSendFile(
         string $filePath,
-        ?string $attachmentName,
-        ?string $disposition,
-        ?string $mimeType,
-        ?string $xHeader
+        ?string $attachmentName = null,
+        ?string $disposition = null,
+        ?string $mimeType = null,
+        ?string $xHeader = null
     ): ResponseInterface
     {
         $this->assertDisposition($disposition);
@@ -110,8 +110,8 @@ final class DownloadResponseFactory
     public function sendStreamAsFile(
         StreamInterface $stream,
         string $attachmentName,
-        ?string $disposition,
-        ?string $mimeType
+        ?string $disposition = null,
+        ?string $mimeType = null
     ): ResponseInterface
     {
         if ($mimeType === null) {
@@ -144,9 +144,9 @@ final class DownloadResponseFactory
      */
     public function sendFile(
         string $filePath,
-        ?string $attachmentName,
-        ?string $disposition,
-        ?string $mimeType
+        ?string $attachmentName = null,
+        ?string $disposition = null,
+        ?string $mimeType = null
     ): ResponseInterface
     {
         $stream = $this->streamFactory->createStreamFromFile($filePath);
@@ -174,8 +174,9 @@ final class DownloadResponseFactory
     public function sendContentAsFile(
         string $content,
         string $attachmentName,
-        ?string $disposition,
-        ?string $mimeType): ResponseInterface
+        ?string $disposition = null,
+        ?string $mimeType = null
+    ): ResponseInterface
     {
         $stream = $this->streamFactory->createStream($content);
         return $this->sendStreamAsFile($stream, $attachmentName, $disposition, $mimeType);
