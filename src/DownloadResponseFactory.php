@@ -66,7 +66,7 @@ final class DownloadResponseFactory
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file
      * content.
-     * @param string|null $xHeader The name of the x-sendfile header. Defaults to "X-Sendfile".
+     * @param string $xHeader The name of the x-sendfile header. Defaults to "X-Sendfile".
      *
      * @return ResponseInterface Response.
      * @see sendFile()
@@ -107,7 +107,7 @@ final class DownloadResponseFactory
      * @param string $attachmentName File name shown to the user.
      * @param string|null $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
-     * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file content.
+     * @param string $mimeType The MIME type of the content. If not set, it will be guessed based on the file content.
      */
     public function sendStreamAsFile(
         StreamInterface $stream,
@@ -171,7 +171,7 @@ final class DownloadResponseFactory
      * @param string $attachmentName The file name shown to the user.
      * @param string|null $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
-     * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file content.
+     * @param string $mimeType The MIME type of the content. If not set, it will be guessed based on the file content.
      */
     public function sendContentAsFile(
         string $content,
