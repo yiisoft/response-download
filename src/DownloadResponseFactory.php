@@ -20,7 +20,7 @@ final class DownloadResponseFactory
 
     public function __construct(
         private readonly ResponseFactoryInterface $responseFactory,
-        private readonly StreamFactoryInterface $streamFactory
+        private readonly StreamFactoryInterface $streamFactory,
     )
     {
     }
@@ -60,10 +60,12 @@ final class DownloadResponseFactory
      * will open but the downloaded file will have 0 bytes.
      *
      * @param string $filePath Path to file to send.
-     * @param string|null $attachmentName The file name shown to the user. If null, it will be determined from {@see $filePath}.
+     * @param string|null $attachmentName The file name shown to the user. If null, it will be determined from
+     * {@see $filePath}.
      * @param string|null $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
-     * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file content.
+     * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file
+     * content.
      * @param string|null $xHeader The name of the x-sendfile header. Defaults to "X-Sendfile".
      *
      * @return ResponseInterface Response.
@@ -74,7 +76,7 @@ final class DownloadResponseFactory
         ?string $attachmentName = null,
         ?string $disposition = null,
         ?string $mimeType = null,
-        ?string $xHeader = null
+        string $xHeader = 'X-Sendfile',
     ): ResponseInterface
     {
         $this->assertDisposition($disposition);
@@ -89,12 +91,12 @@ final class DownloadResponseFactory
 
         $dispositionHeader = ContentDispositionHeader::value(
             $disposition ?? ContentDispositionHeader::ATTACHMENT,
-            $attachmentName
+            $attachmentName,
         );
 
         return $this->responseFactory
             ->createResponse()
-            ->withHeader($xHeader ?? 'X-Sendfile', $filePath)
+            ->withHeader($xHeader, $filePath)
             ->withHeader(ContentDispositionHeader::name(), $dispositionHeader)
             ->withHeader(Header::CONTENT_TYPE, $mimeType);
     }
@@ -111,16 +113,14 @@ final class DownloadResponseFactory
         StreamInterface $stream,
         string $attachmentName,
         ?string $disposition = null,
-        ?string $mimeType = null
+        string $mimeType = self::MIME_APPLICATION_OCTET_STREAM,
     ): ResponseInterface
     {
-        if ($mimeType === null) {
-            $mimeType = self::MIME_APPLICATION_OCTET_STREAM;
-        }
+        $this->assertDisposition($disposition);
 
         $dispositionHeader = ContentDispositionHeader::value(
             $disposition ?? ContentDispositionHeader::ATTACHMENT,
-            $attachmentName
+            $attachmentName,
         );
 
         return $this->responseFactory->createResponse()
@@ -133,10 +133,12 @@ final class DownloadResponseFactory
      * Forms a response that sends a file to the browser.
      *
      * @param string $filePath Path to file to send.
-     * @param string|null $attachmentName File name shown to the user. If null, it will be determined from {@see $filePath}.
+     * @param string|null $attachmentName File name shown to the user. If null, it will be determined from
+     * {@see $filePath}.
      * @param string|null $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
-     * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file content.
+     * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file
+     * content.
      *
      * @see sendContentAsFile()
      * @see sendStreamAsFile()
@@ -146,7 +148,7 @@ final class DownloadResponseFactory
         string $filePath,
         ?string $attachmentName = null,
         ?string $disposition = null,
-        ?string $mimeType = null
+        ?string $mimeType = null,
     ): ResponseInterface
     {
         $stream = $this->streamFactory->createStreamFromFile($filePath);
@@ -175,7 +177,7 @@ final class DownloadResponseFactory
         string $content,
         string $attachmentName,
         ?string $disposition = null,
-        ?string $mimeType = null
+        string $mimeType = self::MIME_APPLICATION_OCTET_STREAM,
     ): ResponseInterface
     {
         $stream = $this->streamFactory->createStream($content);
@@ -195,19 +197,23 @@ final class DownloadResponseFactory
     }
 
     /**
-     * Assert that disposition value is correct.
+     * Asserts that disposition value is correct.
      *
      * @param string|null $disposition Disposition value.
      * @throws InvalidArgumentException
      */
     private function assertDisposition(string|null $disposition): void
     {
-        if ($disposition !== null && $disposition !== ContentDispositionHeader::ATTACHMENT && $disposition !== ContentDispositionHeader::INLINE) {
+        if (
+            $disposition !== null &&
+            $disposition !== ContentDispositionHeader::ATTACHMENT &&
+            $disposition !== ContentDispositionHeader::INLINE
+        ) {
             throw new InvalidArgumentException(sprintf(
                 'Disposition value should be either %s or %s, %s given.',
                 ContentDispositionHeader::class . '::ATTACHMENT',
                 ContentDispositionHeader::class . '::INLINE',
-                $disposition
+                $disposition,
             ));
         }
     }
