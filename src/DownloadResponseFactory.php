@@ -62,19 +62,18 @@ final class DownloadResponseFactory
      * @param string $filePath Path to file to send.
      * @param string|null $attachmentName The file name shown to the user. If null, it will be determined from
      * {@see $filePath}.
-     * @param string|null $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
+     * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file
      * content.
      * @param string $xHeader The name of the x-sendfile header. Defaults to "X-Sendfile".
      *
      * @return ResponseInterface Response.
-     * @see sendFile()
      */
     public function xSendFile(
         string $filePath,
         ?string $attachmentName = null,
-        ?string $disposition = null,
+        string $disposition = ContentDispositionHeader::ATTACHMENT,
         ?string $mimeType = null,
         string $xHeader = 'X-Sendfile',
     ): ResponseInterface
@@ -89,10 +88,7 @@ final class DownloadResponseFactory
             $mimeType = $this->getFileMimeType($filePath);
         }
 
-        $dispositionHeader = ContentDispositionHeader::value(
-            $disposition ?? ContentDispositionHeader::ATTACHMENT,
-            $attachmentName,
-        );
+        $dispositionHeader = ContentDispositionHeader::value($disposition, $attachmentName);
 
         return $this->responseFactory
             ->createResponse()
@@ -105,23 +101,19 @@ final class DownloadResponseFactory
      * Forms a response that sends the specified stream as a file to the browser.
      *
      * @param string $attachmentName File name shown to the user.
-     * @param string|null $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
+     * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string $mimeType The MIME type of the content. If not set, it will be guessed based on the file content.
      */
     public function sendStreamAsFile(
         StreamInterface $stream,
         string $attachmentName,
-        ?string $disposition = null,
+        string $disposition = ContentDispositionHeader::ATTACHMENT,
         string $mimeType = self::MIME_APPLICATION_OCTET_STREAM,
     ): ResponseInterface
     {
         $this->assertDisposition($disposition);
-
-        $dispositionHeader = ContentDispositionHeader::value(
-            $disposition ?? ContentDispositionHeader::ATTACHMENT,
-            $attachmentName,
-        );
+        $dispositionHeader = ContentDispositionHeader::value($disposition, $attachmentName);
 
         return $this->responseFactory->createResponse()
             ->withHeader(Header::CONTENT_TYPE, $mimeType)
@@ -130,24 +122,20 @@ final class DownloadResponseFactory
     }
 
     /**
-     * Forms a response that sends a file to the browser.
+     * Forms a response that sends a file to the browser. A shortcut for {@see sendStreamAsFIle()}
      *
      * @param string $filePath Path to file to send.
      * @param string|null $attachmentName File name shown to the user. If null, it will be determined from
      * {@see $filePath}.
-     * @param string|null $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
+     * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file
      * content.
-     *
-     * @see sendContentAsFile()
-     * @see sendStreamAsFile()
-     * @see xSendFile()
      */
     public function sendFile(
         string $filePath,
         ?string $attachmentName = null,
-        ?string $disposition = null,
+        string $disposition = ContentDispositionHeader::ATTACHMENT,
         ?string $mimeType = null,
     ): ResponseInterface
     {
@@ -165,18 +153,18 @@ final class DownloadResponseFactory
     }
 
     /**
-     * Sends the specified content as a file to the browser.
+     * Sends the specified content as a file to the browser. A shortcut for {@see sendStreamAsFIle()}
      *
      * @param string $content The content to be sent.
      * @param string $attachmentName The file name shown to the user.
-     * @param string|null $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
+     * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string $mimeType The MIME type of the content. If not set, it will be guessed based on the file content.
      */
     public function sendContentAsFile(
         string $content,
         string $attachmentName,
-        ?string $disposition = null,
+        string $disposition = ContentDispositionHeader::ATTACHMENT,
         string $mimeType = self::MIME_APPLICATION_OCTET_STREAM,
     ): ResponseInterface
     {
@@ -199,13 +187,13 @@ final class DownloadResponseFactory
     /**
      * Asserts that disposition value is correct.
      *
-     * @param string|null $disposition Disposition value.
-     * @throws InvalidArgumentException
+     * @param string $disposition Disposition value.
+     * @psalm-assert ContentDispositionHeader::ATTACHMENT | ContentDispositionHeader::INLINE $disposition
+     * @throws InvalidArgumentException When disposition value is incorrect.
      */
-    private function assertDisposition(string|null $disposition): void
+    private function assertDisposition(string $disposition): void
     {
         if (
-            $disposition !== null &&
             $disposition !== ContentDispositionHeader::ATTACHMENT &&
             $disposition !== ContentDispositionHeader::INLINE
         ) {
