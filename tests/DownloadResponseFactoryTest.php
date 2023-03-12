@@ -239,10 +239,7 @@ final class DownloadResponseFactoryTest extends TestCase
             ->getDownloadResponseFactory()
             ->sendContentAsFile(...$arguments);
 
-        foreach ($expectedHeaders as $name => $value) {
-            $this->assertSame($value, $response->getHeaderLine($name));
-        }
-
+        $this->assertResponseHeaders($expectedHeaders, $response);
         $this->assertSame($expectedBody, (string) $response->getBody());
     }
 
