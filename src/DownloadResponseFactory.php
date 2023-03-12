@@ -80,21 +80,14 @@ final class DownloadResponseFactory
     {
         $this->assertDisposition($disposition);
 
-        if ($attachmentName === null) {
-            $attachmentName = basename($filePath);
-        }
-
-        if ($mimeType === null) {
-            $mimeType = $this->getFileMimeType($filePath);
-        }
-
-        $dispositionHeader = ContentDispositionHeader::value($disposition, $attachmentName);
-
         return $this->responseFactory
             ->createResponse()
             ->withHeader($xHeader, $filePath)
-            ->withHeader(ContentDispositionHeader::name(), $dispositionHeader)
-            ->withHeader(Header::CONTENT_TYPE, $mimeType);
+            ->withHeader(
+                ContentDispositionHeader::name(),
+                ContentDispositionHeader::value($disposition, $attachmentName ?? basename($filePath)),
+            )
+            ->withHeader(Header::CONTENT_TYPE, $mimeType ?? $this->getFileMimeType($filePath));
     }
 
     /**
@@ -103,7 +96,7 @@ final class DownloadResponseFactory
      * @param string $attachmentName File name shown to the user.
      * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
-     * @param string $mimeType The MIME type of the content. If not set, it will be guessed based on the file content.
+     * @param string $mimeType The MIME type of the content. Default is {@see MIME_APPLICATION_OCTET_STREAM}.
      */
     public function sendStreamAsFile(
         StreamInterface $stream,
@@ -113,16 +106,18 @@ final class DownloadResponseFactory
     ): ResponseInterface
     {
         $this->assertDisposition($disposition);
-        $dispositionHeader = ContentDispositionHeader::value($disposition, $attachmentName);
 
         return $this->responseFactory->createResponse()
             ->withHeader(Header::CONTENT_TYPE, $mimeType)
-            ->withHeader(ContentDispositionHeader::name(), $dispositionHeader)
+            ->withHeader(
+                ContentDispositionHeader::name(),
+                ContentDispositionHeader::value($disposition, $attachmentName),
+            )
             ->withBody($stream);
     }
 
     /**
-     * Forms a response that sends a file to the browser. A shortcut for {@see sendStreamAsFIle()}
+     * Forms a response that sends a file to the browser. A shortcut for {@see sendStreamAsFIle()}.
      *
      * @param string $filePath Path to file to send.
      * @param string|null $attachmentName File name shown to the user. If null, it will be determined from
@@ -139,27 +134,22 @@ final class DownloadResponseFactory
         ?string $mimeType = null,
     ): ResponseInterface
     {
-        $stream = $this->streamFactory->createStreamFromFile($filePath);
-
-        if ($attachmentName === null) {
-            $attachmentName = basename($filePath);
-        }
-
-        if ($mimeType === null) {
-            $mimeType = $this->getFileMimeType($filePath);
-        }
-
-        return $this->sendStreamAsFile($stream, $attachmentName, $disposition, $mimeType);
+        return $this->sendStreamAsFile(
+            stream: $this->streamFactory->createStreamFromFile($filePath),
+            attachmentName: $attachmentName ?? basename($filePath),
+            disposition: $disposition,
+            mimeType: $mimeType ?? $this->getFileMimeType($filePath),
+        );
     }
 
     /**
-     * Sends the specified content as a file to the browser. A shortcut for {@see sendStreamAsFIle()}
+     * Sends the specified content as a file to the browser. A shortcut for {@see sendStreamAsFIle()}.
      *
      * @param string $content The content to be sent.
      * @param string $attachmentName The file name shown to the user.
      * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
-     * @param string $mimeType The MIME type of the content. If not set, it will be guessed based on the file content.
+     * @param string $mimeType The MIME type of the content. Default is {@see MIME_APPLICATION_OCTET_STREAM}.
      */
     public function sendContentAsFile(
         string $content,
@@ -168,8 +158,12 @@ final class DownloadResponseFactory
         string $mimeType = self::MIME_APPLICATION_OCTET_STREAM,
     ): ResponseInterface
     {
-        $stream = $this->streamFactory->createStream($content);
-        return $this->sendStreamAsFile($stream, $attachmentName, $disposition, $mimeType);
+        return $this->sendStreamAsFile(
+            stream: $this->streamFactory->createStream($content),
+            attachmentName: $attachmentName,
+            disposition: $disposition,
+            mimeType: $mimeType,
+        );
     }
 
     private function getFileMimeType(string $filePath): string
