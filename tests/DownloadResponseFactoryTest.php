@@ -268,8 +268,8 @@ final class DownloadResponseFactoryTest extends TestCase
     private function expectWrongDisposition(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $message = "Disposition value must be either Yiisoft\Http\ContentDispositionHeader::ATTACHMENT or " .
-            "Yiisoft\Http\ContentDispositionHeader::INLINE, a given.";
+        $message = 'Disposition value must be either "Yiisoft\Http\ContentDispositionHeader::ATTACHMENT" or ' .
+            '"Yiisoft\Http\ContentDispositionHeader::INLINE", "a" given.';
         $this->expectExceptionMessage($message);
     }
 

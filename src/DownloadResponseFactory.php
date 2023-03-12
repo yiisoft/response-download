@@ -192,7 +192,7 @@ final class DownloadResponseFactory
             $disposition !== ContentDispositionHeader::INLINE
         ) {
             throw new InvalidArgumentException(sprintf(
-                'Disposition value must be either %s or %s, %s given.',
+                'Disposition value must be either "%s" or "%s", "%s" given.',
                 ContentDispositionHeader::class . '::ATTACHMENT',
                 ContentDispositionHeader::class . '::INLINE',
                 $disposition,
