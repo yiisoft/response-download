@@ -14,10 +14,23 @@ use Psr\Http\Message\StreamInterface;
 use Yiisoft\Http\ContentDispositionHeader;
 use Yiisoft\Http\Header;
 
+/**
+ * Provides multiple methods for creating response with downloadable content.
+ */
 final class DownloadResponseFactory
 {
+    /**
+     * A MIME type value for unknown binary files.
+     * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types#applicationoctet-stream
+     */
     private const MIME_APPLICATION_OCTET_STREAM = 'application/octet-stream';
 
+    /**
+     * @param ResponseFactoryInterface $responseFactory PSR compatible response factory
+     * (@see https://www.php-fig.org/psr/psr-17/#22-responsefactoryinterface).
+     * @param StreamFactoryInterface $streamFactory PSR compatible stream factory
+     * (@see https://www.php-fig.org/psr/psr-17/#24-streamfactoryinterface).
+     */
     public function __construct(
         private readonly ResponseFactoryInterface $responseFactory,
         private readonly StreamFactoryInterface $streamFactory,
@@ -26,19 +39,18 @@ final class DownloadResponseFactory
     }
 
     /**
-     * Forms a response that sends existing file to a browser as a download using x-sendfile.
+     * Forms a response that sends existing file to a browser as a download using `x-sendfile`.
      *
-     * X-Sendfile is a feature allowing a web application to redirect the request for a file to the webserver
-     * that in turn processes the request, this way eliminating the need to perform tasks like reading the file
-     * and sending it to the user. When dealing with a lot of files (or very big files) this can lead to a great
-     * increase in performance as the web application is allowed to terminate earlier while the webserver is
-     * handling the request.
+     * `X-Sendfile` is a feature allowing a web application to redirect the request for a file to the webserver that in
+     * turn processes the request, this way eliminating the need to perform tasks like reading the file and sending it
+     * to the user. When dealing with a lot of files (or very big files) this can lead to a great increase in
+     * performance as the web application is allowed to terminate earlier while the webserver is handling the request.
      *
-     * The request is sent to the server through a special non-standard HTTP-header.
-     * When the web server encounters the presence of such header it will discard all output and send the file
-     * specified by that header using web server internals including all optimizations like caching-headers.
+     * The request is sent to the server through a special non-standard HTTP-header. When the web server encounters the
+     * presence of such header it will discard all output and send the file specified by that header using web server
+     * internals including all optimizations like caching-headers.
      *
-     * As this header directive is non-standard different directives exists for different web servers applications:
+     * As this header directive is non-standard, the name varies depending on the used web server:
      *
      * - Apache: [X-Sendfile](https://tn123.org/mod_xsendfile/)
      * - Lighttpd v1.4: [X-LIGHTTPD-send-file](https://redmine.lighttpd.net/projects/lighttpd/wiki/X-LIGHTTPD-send-file)
@@ -46,8 +58,8 @@ final class DownloadResponseFactory
      * - Nginx: [X-Accel-Redirect](https://www.nginx.com/resources/wiki/XSendfile)
      * - Cherokee: [X-Sendfile and X-Accel-Redirect](https://cherokee-project.com/doc/other_goodies.html#x-sendfile)
      *
-     * So for this method to work the X-SENDFILE option/module should be enabled by the web server and
-     * a proper xHeader should be sent.
+     * So for this method to work, the `X-SENDFILE` option/module must be enabled by the web server and a proper
+     * `xHeader` must be sent.
      *
      * **Note**
      *
@@ -56,17 +68,17 @@ final class DownloadResponseFactory
      *
      * **Side effects**
      *
-     * If this option is disabled by the web server, when this method is called a download configuration dialog
-     * will open but the downloaded file will have 0 bytes.
+     * If this option is disabled by the web server, when this method is called, a download dialog will open, but the
+     * downloaded file will have 0 bytes.
      *
-     * @param string $filePath Path to file to send.
-     * @param string|null $attachmentName The file name shown to the user. If null, it will be determined from
+     * @param string $filePath Path to a file to send.
+     * @param string|null $attachmentName The file name shown to the user. If `null`, it will be determined from
      * {@see $filePath}.
      * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file
-     * content.
-     * @param string $xHeader The name of the x-sendfile header. Defaults to "X-Sendfile".
+     * content ({@see $filePath}).
+     * @param string $xHeader The name of the `x-sendfile` header. Defaults to "X-Sendfile".
      *
      * @return ResponseInterface Response.
      */
@@ -119,13 +131,13 @@ final class DownloadResponseFactory
     /**
      * Forms a response that sends a file to the browser. A shortcut for {@see sendStreamAsFIle()}.
      *
-     * @param string $filePath Path to file to send.
-     * @param string|null $attachmentName File name shown to the user. If null, it will be determined from
+     * @param string $filePath Path to a file to send.
+     * @param string|null $attachmentName File name shown to the user. If `null`, it will be determined from
      * {@see $filePath}.
      * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file
-     * content.
+     * content ({@see $filePath}).
      */
     public function sendFile(
         string $filePath,
@@ -166,6 +178,12 @@ final class DownloadResponseFactory
         );
     }
 
+    /**
+     * Detects MIME type of file located by a given path. Fallbacks to {@see MIME_APPLICATION_OCTET_STREAM} if
+     * extracting was unsuccessful.
+     * @param string $filePath A path to analyzed file.
+     * @return string MIME type value.
+     */
     private function getFileMimeType(string $filePath): string
     {
         $info = new finfo(FILEINFO_MIME_TYPE);
