@@ -14,31 +14,43 @@ use Psr\Http\Message\StreamInterface;
 use Yiisoft\Http\ContentDispositionHeader;
 use Yiisoft\Http\Header;
 
+/**
+ * Provides multiple methods for creating PSR-7 compatible response with downloadable content.
+ */
 final class DownloadResponseFactory
 {
+    /**
+     * A MIME type value for unknown binary files.
+     * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types#applicationoctet-stream
+     */
     private const MIME_APPLICATION_OCTET_STREAM = 'application/octet-stream';
 
+    /**
+     * @param ResponseFactoryInterface $responseFactory PSR-17 compatible response factory
+     * (@see https://www.php-fig.org/psr/psr-17/#22-responsefactoryinterface).
+     * @param StreamFactoryInterface $streamFactory PSR-17 compatible stream factory
+     * (@see https://www.php-fig.org/psr/psr-17/#24-streamfactoryinterface).
+     */
     public function __construct(
         private readonly ResponseFactoryInterface $responseFactory,
-        private readonly StreamFactoryInterface $streamFactory
+        private readonly StreamFactoryInterface $streamFactory,
     )
     {
     }
 
     /**
-     * Forms a response that sends existing file to a browser as a download using x-sendfile.
+     * Forms a response that sends existing file to a browser as a download using `x-sendfile`.
      *
-     * X-Sendfile is a feature allowing a web application to redirect the request for a file to the webserver
-     * that in turn processes the request, this way eliminating the need to perform tasks like reading the file
-     * and sending it to the user. When dealing with a lot of files (or very big files) this can lead to a great
-     * increase in performance as the web application is allowed to terminate earlier while the webserver is
-     * handling the request.
+     * `X-Sendfile` is a feature allowing a web application to redirect the request for a file to the webserver that in
+     * turn processes the request, this way eliminating the need to perform tasks like reading the file and sending it
+     * to the user. When dealing with a lot of files (or very big files) this can lead to a great increase in
+     * performance as the web application is allowed to terminate earlier while the webserver is handling the request.
      *
-     * The request is sent to the server through a special non-standard HTTP-header.
-     * When the web server encounters the presence of such header it will discard all output and send the file
-     * specified by that header using web server internals including all optimizations like caching-headers.
+     * The request is sent to the server through a special non-standard HTTP-header. When the web server encounters the
+     * presence of such header it will discard all output and send the file specified by that header using web server
+     * internals including all optimizations like caching-headers.
      *
-     * As this header directive is non-standard different directives exists for different web servers applications:
+     * As this header directive is non-standard, the name varies depending on the used web server:
      *
      * - Apache: [X-Sendfile](https://tn123.org/mod_xsendfile/)
      * - Lighttpd v1.4: [X-LIGHTTPD-send-file](https://redmine.lighttpd.net/projects/lighttpd/wiki/X-LIGHTTPD-send-file)
@@ -46,8 +58,8 @@ final class DownloadResponseFactory
      * - Nginx: [X-Accel-Redirect](https://www.nginx.com/resources/wiki/XSendfile)
      * - Cherokee: [X-Sendfile and X-Accel-Redirect](https://cherokee-project.com/doc/other_goodies.html#x-sendfile)
      *
-     * So for this method to work the X-SENDFILE option/module should be enabled by the web server and
-     * a proper xHeader should be sent.
+     * So for this method to work, the `X-SENDFILE` option/module must be enabled by the web server and a proper
+     * `xHeader` must be sent.
      *
      * **Note**
      *
@@ -56,131 +68,134 @@ final class DownloadResponseFactory
      *
      * **Side effects**
      *
-     * If this option is disabled by the web server, when this method is called a download configuration dialog
-     * will open but the downloaded file will have 0 bytes.
+     * If this option is disabled by the web server, when this method is called, a download dialog will open, but the
+     * downloaded file will have 0 bytes.
      *
-     * @param string $filePath Path to file to send.
-     * @param string|null $attachmentName The file name shown to the user. If null, it will be determined from {@see $filePath}.
-     * @param string|null $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
+     * @param string $filePath Path to a file to send.
+     * @param string|null $attachmentName The file name shown to the user. If `null`, it will be determined from
+     * {@see $filePath}.
+     * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
-     * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file content.
-     * @param string|null $xHeader The name of the x-sendfile header. Defaults to "X-Sendfile".
+     * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file
+     * content ({@see $filePath}).
+     * @param string $xHeader The name of the `x-sendfile` header. Defaults to "X-Sendfile".
      *
-     * @return ResponseInterface Response.
-     * @see sendFile()
+     * @return ResponseInterface PSR-7 compatible response
+     * (@see https://www.php-fig.org/psr/psr-7/#33-psrhttpmessageresponseinterface).
      */
     public function xSendFile(
         string $filePath,
-        ?string $attachmentName,
-        ?string $disposition,
-        ?string $mimeType,
-        ?string $xHeader
+        ?string $attachmentName = null,
+        string $disposition = ContentDispositionHeader::ATTACHMENT,
+        ?string $mimeType = null,
+        string $xHeader = 'X-Sendfile',
     ): ResponseInterface
     {
         $this->assertDisposition($disposition);
 
-        if ($attachmentName === null) {
-            $attachmentName = basename($filePath);
-        }
-
-        if ($mimeType === null) {
-            $mimeType = $this->getFileMimeType($filePath);
-        }
-
-        $dispositionHeader = ContentDispositionHeader::value(
-            $disposition ?? ContentDispositionHeader::ATTACHMENT,
-            $attachmentName
-        );
-
         return $this->responseFactory
             ->createResponse()
-            ->withHeader($xHeader ?? 'X-Sendfile', $filePath)
-            ->withHeader(ContentDispositionHeader::name(), $dispositionHeader)
-            ->withHeader(Header::CONTENT_TYPE, $mimeType);
+            ->withHeader($xHeader, $filePath)
+            ->withHeader(
+                ContentDispositionHeader::name(),
+                ContentDispositionHeader::value($disposition, $attachmentName ?? basename($filePath)),
+            )
+            ->withHeader(Header::CONTENT_TYPE, $mimeType ?? $this->getFileMimeType($filePath));
     }
 
     /**
      * Forms a response that sends the specified stream as a file to the browser.
      *
+     * @param StreamInterface $stream PSR-7 compatible stream
+     * (@see https://www.php-fig.org/psr/psr-7/#34-psrhttpmessagestreaminterface) to send.
      * @param string $attachmentName File name shown to the user.
-     * @param string|null $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
+     * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
-     * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file content.
+     * @param string $mimeType The MIME type of the content. Default is {@see MIME_APPLICATION_OCTET_STREAM}.
+     *
+     * @return ResponseInterface PSR-7 compatible response
+     * (@see https://www.php-fig.org/psr/psr-7/#33-psrhttpmessageresponseinterface).
      */
     public function sendStreamAsFile(
         StreamInterface $stream,
         string $attachmentName,
-        ?string $disposition,
-        ?string $mimeType
+        string $disposition = ContentDispositionHeader::ATTACHMENT,
+        string $mimeType = self::MIME_APPLICATION_OCTET_STREAM,
     ): ResponseInterface
     {
-        if ($mimeType === null) {
-            $mimeType = self::MIME_APPLICATION_OCTET_STREAM;
-        }
-
-        $dispositionHeader = ContentDispositionHeader::value(
-            $disposition ?? ContentDispositionHeader::ATTACHMENT,
-            $attachmentName
-        );
+        $this->assertDisposition($disposition);
 
         return $this->responseFactory->createResponse()
             ->withHeader(Header::CONTENT_TYPE, $mimeType)
-            ->withHeader(ContentDispositionHeader::name(), $dispositionHeader)
+            ->withHeader(
+                ContentDispositionHeader::name(),
+                ContentDispositionHeader::value($disposition, $attachmentName),
+            )
             ->withBody($stream);
     }
 
     /**
-     * Forms a response that sends a file to the browser.
+     * Forms a response that sends a file to the browser. A shortcut for {@see sendStreamAsFIle()}.
      *
-     * @param string $filePath Path to file to send.
-     * @param string|null $attachmentName File name shown to the user. If null, it will be determined from {@see $filePath}.
-     * @param string|null $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
+     * @param string $filePath Path to a file to send.
+     * @param string|null $attachmentName File name shown to the user. If `null`, it will be determined from
+     * {@see $filePath}.
+     * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
-     * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file content.
+     * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file
+     * content ({@see $filePath}).
      *
-     * @see sendContentAsFile()
-     * @see sendStreamAsFile()
-     * @see xSendFile()
+     * @return ResponseInterface PSR-7 compatible response
+     * (@see https://www.php-fig.org/psr/psr-7/#33-psrhttpmessageresponseinterface).
      */
     public function sendFile(
         string $filePath,
-        ?string $attachmentName,
-        ?string $disposition,
-        ?string $mimeType
+        ?string $attachmentName = null,
+        string $disposition = ContentDispositionHeader::ATTACHMENT,
+        ?string $mimeType = null,
     ): ResponseInterface
     {
-        $stream = $this->streamFactory->createStreamFromFile($filePath);
-
-        if ($attachmentName === null) {
-            $attachmentName = basename($filePath);
-        }
-
-        if ($mimeType === null) {
-            $mimeType = $this->getFileMimeType($filePath);
-        }
-
-        return $this->sendStreamAsFile($stream, $attachmentName, $disposition, $mimeType);
+        return $this->sendStreamAsFile(
+            stream: $this->streamFactory->createStreamFromFile($filePath),
+            attachmentName: $attachmentName ?? basename($filePath),
+            disposition: $disposition,
+            mimeType: $mimeType ?? $this->getFileMimeType($filePath),
+        );
     }
 
     /**
-     * Sends the specified content as a file to the browser.
+     * Sends the specified content as a file to the browser. A shortcut for {@see sendStreamAsFIle()}.
      *
      * @param string $content The content to be sent.
      * @param string $attachmentName The file name shown to the user.
-     * @param string|null $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
+     * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
-     * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file content.
+     * @param string $mimeType The MIME type of the content. Default is {@see MIME_APPLICATION_OCTET_STREAM}.
+     *
+     * @return ResponseInterface PSR-7 compatible response
+     * (@see https://www.php-fig.org/psr/psr-7/#33-psrhttpmessageresponseinterface).
      */
     public function sendContentAsFile(
         string $content,
         string $attachmentName,
-        ?string $disposition,
-        ?string $mimeType): ResponseInterface
+        string $disposition = ContentDispositionHeader::ATTACHMENT,
+        string $mimeType = self::MIME_APPLICATION_OCTET_STREAM,
+    ): ResponseInterface
     {
-        $stream = $this->streamFactory->createStream($content);
-        return $this->sendStreamAsFile($stream, $attachmentName, $disposition, $mimeType);
+        return $this->sendStreamAsFile(
+            stream: $this->streamFactory->createStream($content),
+            attachmentName: $attachmentName,
+            disposition: $disposition,
+            mimeType: $mimeType,
+        );
     }
 
+    /**
+     * Detects MIME type of file located by a given path. Fallbacks to {@see MIME_APPLICATION_OCTET_STREAM} if
+     * extracting was unsuccessful.
+     * @param string $filePath A path to analyzed file.
+     * @return string MIME type value.
+     */
     private function getFileMimeType(string $filePath): string
     {
         $info = new finfo(FILEINFO_MIME_TYPE);
@@ -194,19 +209,23 @@ final class DownloadResponseFactory
     }
 
     /**
-     * Assert that disposition value is correct.
+     * Asserts that disposition value is correct.
      *
-     * @param string|null $disposition Disposition value.
-     * @throws InvalidArgumentException
+     * @param string $disposition Disposition value.
+     * @psalm-assert ContentDispositionHeader::ATTACHMENT | ContentDispositionHeader::INLINE $disposition
+     * @throws InvalidArgumentException When disposition value is incorrect.
      */
-    private function assertDisposition(string|null $disposition): void
+    private function assertDisposition(string $disposition): void
     {
-        if ($disposition !== null && $disposition !== ContentDispositionHeader::ATTACHMENT && $disposition !== ContentDispositionHeader::INLINE) {
+        if (
+            $disposition !== ContentDispositionHeader::ATTACHMENT &&
+            $disposition !== ContentDispositionHeader::INLINE
+        ) {
             throw new InvalidArgumentException(sprintf(
-                'Disposition value should be either %s or %s, %s given.',
+                'Disposition value must be either "%s" or "%s", "%s" given.',
                 ContentDispositionHeader::class . '::ATTACHMENT',
                 ContentDispositionHeader::class . '::INLINE',
-                $disposition
+                $disposition,
             ));
         }
     }

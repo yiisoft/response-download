@@ -34,14 +34,13 @@ composer require yiisoft/response-download
 Use the factory to form a response:
 
 ```php
-
-use \Psr\Http\Message\ResponseInterface;
-use \Yiisoft\ResponseDownload\DownloadResponseFactory;
+use Psr\Http\Message\ResponseInterface;
+use Yiisoft\ResponseDownload\DownloadResponseFactory;
 
 final class MyController
 {
     public function __construct(
-        private readonly DownloadResponseFactory $downloadResponseFactory
+        private readonly DownloadResponseFactory $downloadResponseFactory,
     )
     {    
     }
@@ -63,27 +62,27 @@ final class MyController
     
     public function sendMyStreamAsFile(): ResponseInterface
     {
-        $steam = new MyStream();
+        $stream = new MyStream();
         
-        return $this->downloadResponseFactory->sendStreamAsFile($steam, 'message.txt');
+        return $this->downloadResponseFactory->sendStreamAsFile($stream, 'message.txt');
     }
 }
 ```
 
-Note the `xSendFile()`. It is a special method that delegates the hard work to the web server instead of serving the file
-using PHP.
+Note the `xSendFile()`. It is a special method that delegates the hard work to the web server instead of serving the 
+file using PHP.
 
-If attachment name is not specified in `sendFile()` or `xSendFile()`, it will be taken from the name of the file served.
+Optional arguments and defaults:
 
-Each file sending method could also be provided with optional mime type and optional content disposition.
-
-If mime type is omitted, for `sendFile()` and `xSendFile()` it will be determined based on the file content.
+- If attachment name is not specified in `sendFile()` or `xSendFile()`, it will be taken from the name of the file 
+- served.
+- Each file sending method could also be provided with optional mime type and optional content disposition.
+- If mime type is omitted, for `sendFile()` and `xSendFile()` it will be determined based on the file content.
 For other methods or when unable to determine the mime type, "application/octet-stream" will be used.
+- Content disposition is "attachment" by default. It will trigger browser's download dialog. If you want the content
+of the file to be displayed inline, set it to `Yiisoft\Http\ContentDispositionHeader\ContentDispositionHeader::INLINE`.
 
-Content disposition is "attachment" by default. It will trigger browser's download dialog. If you want the content
-of the file to be displayed inline, set it to `\Yiisoft\Http\ContentDispositionHeader\ContentDispositionHeader::INLINE`.
-
-## Testing
+## Contributing
 
 ### Unit testing
 
