@@ -15,7 +15,7 @@ use Yiisoft\Http\ContentDispositionHeader;
 use Yiisoft\Http\Header;
 
 /**
- * Provides multiple methods for creating response with downloadable content.
+ * Provides multiple methods for creating PSR-7 compatible response with downloadable content.
  */
 final class DownloadResponseFactory
 {
@@ -26,9 +26,9 @@ final class DownloadResponseFactory
     private const MIME_APPLICATION_OCTET_STREAM = 'application/octet-stream';
 
     /**
-     * @param ResponseFactoryInterface $responseFactory PSR compatible response factory
+     * @param ResponseFactoryInterface $responseFactory PSR-17 compatible response factory
      * (@see https://www.php-fig.org/psr/psr-17/#22-responsefactoryinterface).
-     * @param StreamFactoryInterface $streamFactory PSR compatible stream factory
+     * @param StreamFactoryInterface $streamFactory PSR-17 compatible stream factory
      * (@see https://www.php-fig.org/psr/psr-17/#24-streamfactoryinterface).
      */
     public function __construct(
@@ -80,7 +80,8 @@ final class DownloadResponseFactory
      * content ({@see $filePath}).
      * @param string $xHeader The name of the `x-sendfile` header. Defaults to "X-Sendfile".
      *
-     * @return ResponseInterface Response.
+     * @return ResponseInterface PSR-7 compatible response
+     * (@see https://www.php-fig.org/psr/psr-7/#33-psrhttpmessageresponseinterface).
      */
     public function xSendFile(
         string $filePath,
@@ -105,10 +106,15 @@ final class DownloadResponseFactory
     /**
      * Forms a response that sends the specified stream as a file to the browser.
      *
+     * @param StreamInterface $stream PSR-7 compatible stream
+     * (@see https://www.php-fig.org/psr/psr-7/#34-psrhttpmessagestreaminterface) to send.
      * @param string $attachmentName File name shown to the user.
      * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string $mimeType The MIME type of the content. Default is {@see MIME_APPLICATION_OCTET_STREAM}.
+     *
+     * @return ResponseInterface PSR-7 compatible response
+     * (@see https://www.php-fig.org/psr/psr-7/#33-psrhttpmessageresponseinterface).
      */
     public function sendStreamAsFile(
         StreamInterface $stream,
@@ -138,6 +144,9 @@ final class DownloadResponseFactory
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file
      * content ({@see $filePath}).
+     *
+     * @return ResponseInterface PSR-7 compatible response
+     * (@see https://www.php-fig.org/psr/psr-7/#33-psrhttpmessageresponseinterface).
      */
     public function sendFile(
         string $filePath,
@@ -162,6 +171,9 @@ final class DownloadResponseFactory
      * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string $mimeType The MIME type of the content. Default is {@see MIME_APPLICATION_OCTET_STREAM}.
+     *
+     * @return ResponseInterface PSR-7 compatible response
+     * (@see https://www.php-fig.org/psr/psr-7/#33-psrhttpmessageresponseinterface).
      */
     public function sendContentAsFile(
         string $content,

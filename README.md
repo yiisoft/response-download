@@ -34,14 +34,13 @@ composer require yiisoft/response-download
 Use the factory to form a response:
 
 ```php
-
-use \Psr\Http\Message\ResponseInterface;
-use \Yiisoft\ResponseDownload\DownloadResponseFactory;
+use Psr\Http\Message\ResponseInterface;
+use Yiisoft\ResponseDownload\DownloadResponseFactory;
 
 final class MyController
 {
     public function __construct(
-        private readonly DownloadResponseFactory $downloadResponseFactory
+        private readonly DownloadResponseFactory $downloadResponseFactory,
     )
     {    
     }
@@ -63,9 +62,9 @@ final class MyController
     
     public function sendMyStreamAsFile(): ResponseInterface
     {
-        $steam = new MyStream();
+        $stream = new MyStream();
         
-        return $this->downloadResponseFactory->sendStreamAsFile($steam, 'message.txt');
+        return $this->downloadResponseFactory->sendStreamAsFile($stream, 'message.txt');
     }
 }
 ```
@@ -83,7 +82,7 @@ For other methods or when unable to determine the mime type, "application/octet-
 Content disposition is "attachment" by default. It will trigger browser's download dialog. If you want the content
 of the file to be displayed inline, set it to `\Yiisoft\Http\ContentDispositionHeader\ContentDispositionHeader::INLINE`.
 
-## Testing
+## Contributing
 
 ### Unit testing
 
