@@ -15,11 +15,11 @@ use Yiisoft\ResponseDownload\DownloadResponseFactory;
 
 final class DownloadResponseFactoryTest extends TestCase
 {
-    public function dataXSendFile(): array
+    public static function dataXSendFile(): array
     {
-        $txtFilePath = $this->getFilePath('answer.txt');
-        $cssFilePath = $this->getFilePath('style.css');
-        $nonExistingFilePath = $this->getFilePath('non-existing-file.txt');
+        $txtFilePath = self::getFilePath('answer.txt');
+        $cssFilePath = self::getFilePath('style.css');
+        $nonExistingFilePath = self::getFilePath('non-existing-file.txt');
 
         return [
             'defaults' => [
@@ -70,14 +70,14 @@ final class DownloadResponseFactoryTest extends TestCase
     public function testXSendFileWithWrongDisposition(): void
     {
         $responseFactory = $this->getDownloadResponseFactory();
-        $filePath = $this->getFilePath('answer.txt');
+        $filePath = self::getFilePath('answer.txt');
 
         $this->expectWrongDisposition();
 
         $responseFactory->xSendFile($filePath, disposition: 'a');
     }
 
-    public function dataSendStreamAsFile(): array
+    public static function dataSendStreamAsFile(): array
     {
         $txtContent = '42';
         $cssContent = 'body { font-size: 20px; }';
@@ -133,10 +133,10 @@ final class DownloadResponseFactoryTest extends TestCase
         $responseFactory->sendStreamAsFile($stream, attachmentName: 'answer.txt', disposition: 'a');
     }
 
-    public function dataSendFile(): array
+    public static function dataSendFile(): array
     {
-        $txtFilePath = $this->getFilePath('answer.txt');
-        $cssFilePath = $this->getFilePath('style.css');
+        $txtFilePath = self::getFilePath('answer.txt');
+        $cssFilePath = self::getFilePath('style.css');
 
         return [
             'defaults' => [
@@ -181,7 +181,7 @@ final class DownloadResponseFactoryTest extends TestCase
     public function testSendFileWithWrongDisposition(): void
     {
         $responseFactory = $this->getDownloadResponseFactory();
-        $filePath = $this->getFilePath('answer.txt');
+        $filePath = self::getFilePath('answer.txt');
 
         $this->expectWrongDisposition();
 
@@ -191,14 +191,14 @@ final class DownloadResponseFactoryTest extends TestCase
     public function testSendFileWithNonExistingFile(): void
     {
         $responseFactory = $this->getDownloadResponseFactory();
-        $filePath = $this->getFilePath('not-existing-file.txt');
+        $filePath = self::getFilePath('not-existing-file.txt');
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('The stream or file cannot be opened.');
         $responseFactory->sendFile($filePath);
     }
 
-    public function dataSendContentAsFile(): array
+    public static function dataSendContentAsFile(): array
     {
         $txtContent = '42';
         $cssContent = 'body { font-size: 20px; }';
@@ -260,7 +260,7 @@ final class DownloadResponseFactoryTest extends TestCase
         return new DownloadResponseFactory($responseFactory, $streamFactory);
     }
 
-    private function getFilePath(string $fileName): string
+    private static function getFilePath(string $fileName): string
     {
         return __DIR__ . DIRECTORY_SEPARATOR . 'Support' . DIRECTORY_SEPARATOR . $fileName;
     }
