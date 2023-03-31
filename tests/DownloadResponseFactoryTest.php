@@ -36,7 +36,7 @@ final class DownloadResponseFactoryTest extends TestCase
                     'attachmentName' => 'style-custom.css',
                     'disposition' => ContentDispositionHeader::INLINE,
                     'mimeType' => 'text/css',
-                    'xHeader' => 'X-Sendfile-Custom'
+                    'xHeader' => 'X-Sendfile-Custom',
                 ],
                 [
                     'X-Sendfile-Custom' => $cssFilePath,

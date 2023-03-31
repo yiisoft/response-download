@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-
 namespace Yiisoft\ResponseDownload;
 
 use finfo;
@@ -34,8 +33,7 @@ final class DownloadResponseFactory
     public function __construct(
         private readonly ResponseFactoryInterface $responseFactory,
         private readonly StreamFactoryInterface $streamFactory,
-    )
-    {
+    ) {
     }
 
     /**
@@ -89,8 +87,7 @@ final class DownloadResponseFactory
         string $disposition = ContentDispositionHeader::ATTACHMENT,
         ?string $mimeType = null,
         string $xHeader = 'X-Sendfile',
-    ): ResponseInterface
-    {
+    ): ResponseInterface {
         $this->assertDisposition($disposition);
 
         return $this->responseFactory
@@ -121,8 +118,7 @@ final class DownloadResponseFactory
         string $attachmentName,
         string $disposition = ContentDispositionHeader::ATTACHMENT,
         string $mimeType = self::MIME_APPLICATION_OCTET_STREAM,
-    ): ResponseInterface
-    {
+    ): ResponseInterface {
         $this->assertDisposition($disposition);
 
         return $this->responseFactory->createResponse()
@@ -153,8 +149,7 @@ final class DownloadResponseFactory
         ?string $attachmentName = null,
         string $disposition = ContentDispositionHeader::ATTACHMENT,
         ?string $mimeType = null,
-    ): ResponseInterface
-    {
+    ): ResponseInterface {
         return $this->sendStreamAsFile(
             stream: $this->streamFactory->createStreamFromFile($filePath),
             attachmentName: $attachmentName ?? basename($filePath),
@@ -180,8 +175,7 @@ final class DownloadResponseFactory
         string $attachmentName,
         string $disposition = ContentDispositionHeader::ATTACHMENT,
         string $mimeType = self::MIME_APPLICATION_OCTET_STREAM,
-    ): ResponseInterface
-    {
+    ): ResponseInterface {
         return $this->sendStreamAsFile(
             stream: $this->streamFactory->createStream($content),
             attachmentName: $attachmentName,
