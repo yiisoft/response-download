@@ -1,4 +1,4 @@
-# Yii PSR-7 download response factory Change Log
+# Yii PSR-7 Download Response Factory Change Log
 
 ## 1.0.1 under development
 
