@@ -1,6 +1,6 @@
 <p align="center">
     <a href="https://github.com/yiisoft" target="_blank">
-        <img src="https://yiisoft.github.io/docs/images/yii_logo.svg" height="100px">
+        <img src="https://yiisoft.github.io/docs/images/yii_logo.svg" height="100px" alt="Yii">
     </a>
     <h1 align="center">Yii PSR-7 Download Response Factory</h1>
     <br>
@@ -69,12 +69,12 @@ final class MyController
 }
 ```
 
-Note the `xSendFile()`. It is a special method that delegates the hard work to the web server instead of serving the 
+Note the `xSendFile()`. It is a special method that delegates the hard work to the web server instead of serving the
 file using PHP.
 
 Optional arguments and defaults:
 
-- If attachment name is not specified in `sendFile()` or `xSendFile()`, it will be taken from the name of the file 
+- If attachment name is not specified in `sendFile()` or `xSendFile()`, it will be taken from the name of the file
 - served.
 - Each file sending method could also be provided with optional mime type and optional content disposition.
 - If mime type is omitted, for `sendFile()` and `xSendFile()` it will be determined based on the file content.
