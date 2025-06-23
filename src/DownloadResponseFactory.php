@@ -174,13 +174,13 @@ final class DownloadResponseFactory
         string $content,
         string $attachmentName,
         string $disposition = ContentDispositionHeader::ATTACHMENT,
-        string $mimeType = self::MIME_APPLICATION_OCTET_STREAM,
+        ?string $mimeType = null,
     ): ResponseInterface {
         return $this->sendStreamAsFile(
             stream: $this->streamFactory->createStream($content),
             attachmentName: $attachmentName,
             disposition: $disposition,
-            mimeType: $mimeType,
+            mimeType: $mimeType ?? $this->getContentMimeType($content),
         );
     }
 
@@ -196,6 +196,24 @@ final class DownloadResponseFactory
         $mimeType = @$info->file($filePath) ?: null;
 
         if ($mimeType === null) {
+            $mimeType = self::MIME_APPLICATION_OCTET_STREAM;
+        }
+
+        return $mimeType;
+    }
+
+    /**
+     * Detects MIME type from content string. Fallbacks to {@see MIME_APPLICATION_OCTET_STREAM} if
+     * extracting was unsuccessful.
+     * @param string $content A string containing data to analyze.
+     * @return string MIME type value.
+     */
+    private function getContentMimeType(string $content): string
+    {
+        $info = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = @$info->buffer($content);
+
+        if (!$mimeType) {
             $mimeType = self::MIME_APPLICATION_OCTET_STREAM;
         }
 

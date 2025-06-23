@@ -211,7 +211,7 @@ final class DownloadResponseFactoryTest extends TestCase
                 ],
                 [
                     'Content-Disposition' => 'attachment; filename="answer.txt"',
-                    'Content-Type' => 'application/octet-stream',
+                    'Content-Type' => 'text/plain',
                 ],
                 $txtContent,
             ],
