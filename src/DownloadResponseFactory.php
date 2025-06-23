@@ -165,7 +165,8 @@ final class DownloadResponseFactory
      * @param string $attachmentName The file name shown to the user.
      * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
-     * @param string $mimeType The MIME type of the content. Default is {@see MIME_APPLICATION_OCTET_STREAM}.
+     * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the
+     * ({@see $content}).
      *
      * @return ResponseInterface PSR-7 compatible response
      * (@see https://www.php-fig.org/psr/psr-7/#33-psrhttpmessageresponseinterface).
