@@ -211,7 +211,7 @@ final class DownloadResponseFactoryTest extends TestCase
                 ],
                 [
                     'Content-Disposition' => 'attachment; filename="answer.txt"',
-                    'Content-Type' => 'text/plain',
+                    'Content-Type' => PHP_VERSION_ID < 80200  ? 'application/octet-stream' : 'text/plain',
                 ],
                 $txtContent,
             ],
