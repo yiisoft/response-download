@@ -201,6 +201,7 @@ final class DownloadResponseFactoryTest extends TestCase
     public static function dataSendContentAsFile(): array
     {
         $txtContent = '42';
+        $binContent = "\x00\xFF\xA5\x5A";
         $cssContent = 'body { font-size: 20px; }';
 
         return [
@@ -211,9 +212,20 @@ final class DownloadResponseFactoryTest extends TestCase
                 ],
                 [
                     'Content-Disposition' => 'attachment; filename="answer.txt"',
-                    'Content-Type' => 'application/octet-stream',
+                    'Content-Type' => PHP_VERSION_ID < 80300 ? 'application/octet-stream' : 'text/plain',
                 ],
                 $txtContent,
+            ],
+            'defaultsBinaryContent' => [
+                [
+                    'content' => $binContent,
+                    'attachmentName' => 'example.bin',
+                ],
+                [
+                    'Content-Disposition' => 'attachment; filename="example.bin"',
+                    'Content-Type' => 'application/octet-stream',
+                ],
+                $binContent,
             ],
             'non-defaults' => [
                 [

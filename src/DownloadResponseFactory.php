@@ -73,7 +73,7 @@ final class DownloadResponseFactory
      * @param string|null $attachmentName The file name shown to the user. If `null`, it will be determined from
      * {@see $filePath}.
      * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
-     * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
+     * or {@see ContentDispositionHeader::INLINE}. Default is {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file
      * content ({@see $filePath}).
      * @param string $xHeader The name of the `x-sendfile` header. Defaults to "X-Sendfile".
@@ -107,7 +107,7 @@ final class DownloadResponseFactory
      * (@see https://www.php-fig.org/psr/psr-7/#34-psrhttpmessagestreaminterface) to send.
      * @param string $attachmentName File name shown to the user.
      * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
-     * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
+     * or {@see ContentDispositionHeader::INLINE}. Default is {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string $mimeType The MIME type of the content. Default is {@see MIME_APPLICATION_OCTET_STREAM}.
      *
      * @return ResponseInterface PSR-7 compatible response
@@ -137,7 +137,7 @@ final class DownloadResponseFactory
      * @param string|null $attachmentName File name shown to the user. If `null`, it will be determined from
      * {@see $filePath}.
      * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
-     * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
+     * or {@see ContentDispositionHeader::INLINE}. Default is {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file
      * content ({@see $filePath}).
      *
@@ -164,8 +164,9 @@ final class DownloadResponseFactory
      * @param string $content The content to be sent.
      * @param string $attachmentName The file name shown to the user.
      * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
-     * or {@see ContentDispositionHeader::INLINE}. Default is {@see {@see ContentDispositionHeader::ATTACHMENT}.
-     * @param string $mimeType The MIME type of the content. Default is {@see MIME_APPLICATION_OCTET_STREAM}.
+     * or {@see ContentDispositionHeader::INLINE}. Default is {@see ContentDispositionHeader::ATTACHMENT}.
+     * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the
+     * {@see $content}.
      *
      * @return ResponseInterface PSR-7 compatible response
      * (@see https://www.php-fig.org/psr/psr-7/#33-psrhttpmessageresponseinterface).
@@ -174,13 +175,13 @@ final class DownloadResponseFactory
         string $content,
         string $attachmentName,
         string $disposition = ContentDispositionHeader::ATTACHMENT,
-        string $mimeType = self::MIME_APPLICATION_OCTET_STREAM,
+        ?string $mimeType = null,
     ): ResponseInterface {
         return $this->sendStreamAsFile(
             stream: $this->streamFactory->createStream($content),
             attachmentName: $attachmentName,
             disposition: $disposition,
-            mimeType: $mimeType,
+            mimeType: $mimeType ?? $this->getContentMimeType($content),
         );
     }
 
@@ -196,6 +197,24 @@ final class DownloadResponseFactory
         $mimeType = @$info->file($filePath) ?: null;
 
         if ($mimeType === null) {
+            $mimeType = self::MIME_APPLICATION_OCTET_STREAM;
+        }
+
+        return $mimeType;
+    }
+
+    /**
+     * Detects MIME type from content string. Fallbacks to {@see MIME_APPLICATION_OCTET_STREAM} if
+     * extracting was unsuccessful.
+     * @param string $content A string containing data to analyze.
+     * @return string MIME type value.
+     */
+    private function getContentMimeType(string $content): string
+    {
+        $info = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = @$info->buffer($content);
+
+        if (!$mimeType) {
             $mimeType = self::MIME_APPLICATION_OCTET_STREAM;
         }
 
