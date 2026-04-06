@@ -40,10 +40,10 @@
     },
     "require-dev": {
         "httpsoft/http-message": "^1.0",
+        "infection/infection": "^0.27.11 || ^0.32",
         "maglnet/composer-require-checker": "^4.7.1",
         "phpunit/phpunit": "^10.5",
         "rector/rector": "^2.0.3",
-        "roave/infection-static-analysis-plugin": "^1.16",
         "spatie/phpunit-watcher": "^1.23",
         "vimeo/psalm": "^5.21"
     },
