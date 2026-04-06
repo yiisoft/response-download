@@ -53,11 +53,29 @@ final class DownloadResponseFactory
      * - Apache: [X-Sendfile](https://tn123.org/mod_xsendfile/)
      * - Lighttpd v1.4: [X-LIGHTTPD-send-file](https://redmine.lighttpd.net/projects/lighttpd/wiki/X-LIGHTTPD-send-file)
      * - Lighttpd v1.5: [X-Sendfile](https://redmine.lighttpd.net/projects/lighttpd/wiki/X-LIGHTTPD-send-file)
-     * - Nginx: [X-Accel-Redirect](https://www.nginx.com/resources/wiki/XSendfile)
+     * - Nginx: [X-Accel-Redirect](https://www.nginx.com/resources/wiki/start/topics/examples/x-accel/)
      * - Cherokee: [X-Sendfile and X-Accel-Redirect](https://cherokee-project.com/doc/other_goodies.html#x-sendfile)
      *
      * So for this method to work, the `X-SENDFILE` option/module must be enabled by the web server and a proper
      * `xHeader` must be sent.
+     *
+     * **Nginx**
+     *
+     * Nginx uses `X-Accel-Redirect` instead of `X-Sendfile`. Pass `'X-Accel-Redirect'` as the `$xHeader` argument
+     * and configure an internal location block in your Nginx config that maps to the file path:
+     *
+     * ```nginx
+     * location /protected/ {
+     *     internal;
+     *     alias /var/www/files/;
+     * }
+     * ```
+     *
+     * Then pass the internal location path (e.g. `/protected/myfile.txt`) as `$filePath`:
+     *
+     * ```php
+     * $factory->xSendFile('/protected/myfile.txt', xHeader: 'X-Accel-Redirect');
+     * ```
      *
      * **Note**
      *
