@@ -1,5 +1,9 @@
 # Yii PSR-7 Download Response Factory Change Log
 
+## 1.1.1 under development
+
+- no changes in this release.
+
 ## 1.1.0 April 09, 2026
 
 - Enh #16: Add support for `psr/http-message` version `^2.0` (@vjik)
