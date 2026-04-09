@@ -83,6 +83,7 @@ Different web servers use different header names for the x-sendfile feature:
 | Lighttpd v1.5 | `X-Sendfile` |
 | Nginx | `X-Accel-Redirect` |
 | Cherokee | `X-Sendfile` or `X-Accel-Redirect` |
+| FrankenPHP | `X-Accel-Redirect` |
 
 When using **Nginx**, pass `'X-Accel-Redirect'` as the `$xHeader` argument. Nginx also requires an `internal`
 location block in its configuration that maps to the directory where your files are stored:
@@ -108,8 +109,6 @@ public function xSendMyFile(): ResponseInterface
 
 The `internal` directive ensures the location is only accessible internally by Nginx (not directly by clients),
 while `alias` maps the internal path to the real file system path.
-
-See [Nginx X-Accel documentation](https://www.nginx.com/resources/wiki/start/topics/examples/x-accel/) for details.
 
 Optional arguments and defaults:
 

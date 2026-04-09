@@ -60,24 +60,6 @@ final class DownloadResponseFactory
      * So for this method to work, the `X-SENDFILE` option/module must be enabled by the web server and a proper
      * `xHeader` must be sent.
      *
-     * **Nginx**
-     *
-     * Nginx uses `X-Accel-Redirect` instead of `X-Sendfile`. Pass `'X-Accel-Redirect'` as the `$xHeader` argument
-     * and configure an internal location block in your Nginx config that maps to the file path:
-     *
-     * ```nginx
-     * location /protected/ {
-     *     internal;
-     *     alias /var/www/files/;
-     * }
-     * ```
-     *
-     * Then pass the internal location path (e.g. `/protected/myfile.txt`) as `$filePath`:
-     *
-     * ```php
-     * $factory->xSendFile('/protected/myfile.txt', xHeader: 'X-Accel-Redirect');
-     * ```
-     *
      * **Note**
      *
      * This option allows to download files that are not under web folders, and even files that are otherwise protected
