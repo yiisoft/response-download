@@ -53,8 +53,9 @@ final class DownloadResponseFactory
      * - Apache: [X-Sendfile](https://tn123.org/mod_xsendfile/)
      * - Lighttpd v1.4: [X-LIGHTTPD-send-file](https://redmine.lighttpd.net/projects/lighttpd/wiki/X-LIGHTTPD-send-file)
      * - Lighttpd v1.5: [X-Sendfile](https://redmine.lighttpd.net/projects/lighttpd/wiki/X-LIGHTTPD-send-file)
-     * - Nginx: [X-Accel-Redirect](https://www.nginx.com/resources/wiki/XSendfile)
+     * - Nginx: X-Accel-Redirect
      * - Cherokee: [X-Sendfile and X-Accel-Redirect](https://cherokee-project.com/doc/other_goodies.html#x-sendfile)
+     * - FrankenPHP: [X-Accel-Redirect](https://frankenphp.dev/docs/x-sendfile/)
      *
      * So for this method to work, the `X-SENDFILE` option/module must be enabled by the web server and a proper
      * `xHeader` must be sent.

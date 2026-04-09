@@ -72,6 +72,44 @@ final class MyController
 Note the `xSendFile()`. It is a special method that delegates the hard work to the web server instead of serving the
 file using PHP.
 
+### X-Sendfile and Nginx
+
+Different web servers use different header names for the x-sendfile feature:
+
+| Web server | Header name |
+|---|---|
+| Apache | `X-Sendfile` (default) |
+| Lighttpd v1.4 | `X-LIGHTTPD-send-file` |
+| Lighttpd v1.5 | `X-Sendfile` |
+| Nginx | `X-Accel-Redirect` |
+| Cherokee | `X-Sendfile` or `X-Accel-Redirect` |
+| FrankenPHP | `X-Accel-Redirect` |
+
+When using **Nginx**, pass `'X-Accel-Redirect'` as the `$xHeader` argument. Nginx also requires an `internal`
+location block in its configuration that maps to the directory where your files are stored:
+
+```nginx
+location /protected/ {
+    internal;
+    alias /var/www/files/;
+}
+```
+
+Then call `xSendFile()` with the internal Nginx location path as the file path:
+
+```php
+public function xSendMyFile(): ResponseInterface
+{
+    return $this->downloadResponseFactory->xSendFile(
+        '/protected/myfile.txt',
+        xHeader: 'X-Accel-Redirect',
+    );
+}
+```
+
+The `internal` directive ensures the location is only accessible internally by Nginx (not directly by clients),
+while `alias` maps the internal path to the real file system path.
+
 Optional arguments and defaults:
 
 - If attachment name is not specified in `sendFile()` or `xSendFile()`, it will be taken from the name of the file
