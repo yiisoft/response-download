@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Yiisoft\ResponseDownload\Tests;
 
 use HttpSoft\Message\ResponseFactory;
+use HttpSoft\Message\ServerRequestFactory;
 use HttpSoft\Message\StreamFactory;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
 use Yiisoft\Http\ContentDispositionHeader;
 use Yiisoft\ResponseDownload\DownloadResponseFactory;
@@ -198,6 +200,110 @@ final class DownloadResponseFactoryTest extends TestCase
         $responseFactory->sendFile($filePath);
     }
 
+    public function testSendFileWithRangeRequest(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendFile(self::getFilePath('style.css'), request: $this->createRequest('bytes=7-15'));
+
+        $this->assertSame(206, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes 7-15/26',
+                'Content-Length' => '9',
+                'Content-Disposition' => 'attachment; filename="style.css"',
+                'Content-Type' => 'text/css',
+            ],
+            $response,
+        );
+        $this->assertSame('font-size', (string) $response->getBody());
+    }
+
+    public function testSendFileWithOpenEndedRangeRequest(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendFile(self::getFilePath('style.css'), request: $this->createRequest('bytes=21-'));
+
+        $this->assertSame(206, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes 21-25/26',
+                'Content-Length' => '5',
+            ],
+            $response,
+        );
+        $this->assertSame("x; }\n", (string) $response->getBody());
+    }
+
+    public function testSendContentAsFileWithSuffixRangeRequest(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=-3'),
+            );
+
+        $this->assertSame(206, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes 3-5/6',
+                'Content-Length' => '3',
+            ],
+            $response,
+        );
+        $this->assertSame('def', (string) $response->getBody());
+    }
+
+    public function testSendContentAsFileWithUnsupportedRangeRequest(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=0-1,3-4'),
+            );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Length' => '6',
+                'Content-Disposition' => 'attachment; filename="alphabet.txt"',
+                'Content-Type' => 'text/plain',
+            ],
+            $response,
+        );
+        $this->assertSame('', $response->getHeaderLine('Content-Range'));
+        $this->assertSame('abcdef', (string) $response->getBody());
+    }
+
+    public function testSendFileWithUnsatisfiableRangeRequest(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendFile(self::getFilePath('answer.txt'), request: $this->createRequest('bytes=3-'));
+
+        $this->assertSame(416, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes */3',
+                'Content-Length' => '0',
+            ],
+            $response,
+        );
+        $this->assertSame('', (string) $response->getBody());
+    }
+
     public static function dataSendContentAsFile(): array
     {
         $txtContent = '42';
@@ -270,6 +376,13 @@ final class DownloadResponseFactoryTest extends TestCase
         $streamFactory = new StreamFactory();
 
         return new DownloadResponseFactory($responseFactory, $streamFactory);
+    }
+
+    private function createRequest(?string $range = null): ServerRequestInterface
+    {
+        $request = (new ServerRequestFactory())->createServerRequest('GET', '/');
+
+        return $range === null ? $request : $request->withHeader('Range', $range);
     }
 
     private static function getFilePath(string $fileName): string

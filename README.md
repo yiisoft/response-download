@@ -119,6 +119,10 @@ served.
 the file content. For other methods or when unable to determine the mime type, "application/octet-stream" will be used.
 - Content disposition is "attachment" by default. It will trigger browser's download dialog. If you want the content
 of the file to be displayed inline, set it to `Yiisoft\Http\ContentDispositionHeader\ContentDispositionHeader::INLINE`.
+- To support HTTP range requests, pass a PSR-7 server request as the `request` argument to `sendContentAsFile()`,
+`sendFile()` or `sendStreamAsFile()`. Single byte ranges are supported when the response body size is known and the
+stream is seekable. Multiple ranges are ignored and the full response is returned. For `xSendFile()`, range handling is
+delegated to the web server.
 
 ## Documentation
 
