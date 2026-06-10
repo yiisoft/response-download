@@ -204,7 +204,7 @@ final class DownloadResponseFactoryTest extends TestCase
     {
         $response = $this
             ->getDownloadResponseFactory()
-            ->sendFile(self::getFilePath('style.css'), request: $this->createRequest('bytes=7-15'));
+            ->sendFile(self::getFilePath('style.css'), mimeType: 'text/css', request: $this->createRequest('bytes=7-15'));
 
         $this->assertSame(206, $response->getStatusCode());
         $this->assertResponseHeaders(
@@ -236,6 +236,29 @@ final class DownloadResponseFactoryTest extends TestCase
             $response,
         );
         $this->assertSame("x; }\n", (string) $response->getBody());
+    }
+
+    public function testSendContentAsFileWithCaseInsensitiveRangeUnit(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('Bytes=1-3'),
+            );
+
+        $this->assertSame(206, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes 1-3/6',
+                'Content-Length' => '3',
+            ],
+            $response,
+        );
+        $this->assertSame('bcd', (string) $response->getBody());
     }
 
     public function testSendContentAsFileWithSuffixRangeRequest(): void
@@ -279,6 +302,29 @@ final class DownloadResponseFactoryTest extends TestCase
                 'Content-Length' => '6',
                 'Content-Disposition' => 'attachment; filename="alphabet.txt"',
                 'Content-Type' => 'text/plain',
+            ],
+            $response,
+        );
+        $this->assertSame('', $response->getHeaderLine('Content-Range'));
+        $this->assertSame('abcdef', (string) $response->getBody());
+    }
+
+    public function testSendContentAsFileWithMalformedRangeRequest(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=foo'),
+            );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Length' => '6',
             ],
             $response,
         );

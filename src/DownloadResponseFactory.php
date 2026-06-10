@@ -210,18 +210,18 @@ final class DownloadResponseFactory
      */
     private function parseByteRange(string $rangeHeader, int $size): array|false|null
     {
-        if (!str_starts_with($rangeHeader, self::RANGE_UNIT_BYTES . '=')) {
+        if (!preg_match('/^' . self::RANGE_UNIT_BYTES . '=(.*)$/i', $rangeHeader, $unitMatches)) {
             return false;
         }
 
-        $range = substr($rangeHeader, strlen(self::RANGE_UNIT_BYTES . '='));
+        $range = $unitMatches[1];
 
         if ($range === '' || str_contains($range, ',')) {
             return false;
         }
 
         if (!preg_match('/^(\d*)-(\d*)$/', $range, $matches)) {
-            return null;
+            return false;
         }
 
         [, $start, $end] = $matches;
