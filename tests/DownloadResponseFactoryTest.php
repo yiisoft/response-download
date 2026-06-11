@@ -135,6 +135,32 @@ final class DownloadResponseFactoryTest extends TestCase
         $responseFactory->sendStreamAsFile($stream, attachmentName: 'answer.txt', disposition: 'a');
     }
 
+    public function testSendStreamAsFileWithRangeRequestRewindsStream(): void
+    {
+        $stream = (new StreamFactory())->createStream('abcdef');
+        $stream->seek(3);
+
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendStreamAsFile(
+                $stream,
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=1-3'),
+            );
+
+        $this->assertSame(206, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes 1-3/6',
+                'Content-Length' => '3',
+            ],
+            $response,
+        );
+        $this->assertSame('bcd', (string) $response->getBody());
+    }
+
     public static function dataSendFile(): array
     {
         $txtFilePath = self::getFilePath('answer.txt');

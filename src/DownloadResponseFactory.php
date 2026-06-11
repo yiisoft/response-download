@@ -274,6 +274,8 @@ final class DownloadResponseFactory
             return $response;
         }
 
+        $stream->rewind();
+
         $response = $response
             ->withHeader(self::HEADER_ACCEPT_RANGES, self::RANGE_UNIT_BYTES)
             ->withHeader(self::HEADER_CONTENT_LENGTH, (string) $size);
