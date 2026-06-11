@@ -47,43 +47,36 @@ final class ByteRangeStream implements StreamInterface
         }
     }
 
-    #[\Override]
     public function close(): void
     {
         $this->stream->close();
     }
 
-    #[\Override]
     public function detach()
     {
         return $this->stream->detach();
     }
 
-    #[\Override]
     public function getSize(): ?int
     {
         return $this->size;
     }
 
-    #[\Override]
     public function tell(): int
     {
         return $this->position;
     }
 
-    #[\Override]
     public function eof(): bool
     {
         return $this->position >= $this->size || $this->stream->eof();
     }
 
-    #[\Override]
     public function isSeekable(): bool
     {
         return $this->stream->isSeekable();
     }
 
-    #[\Override]
     public function seek(int $offset, int $whence = SEEK_SET): void
     {
         $position = match ($whence) {
@@ -101,31 +94,26 @@ final class ByteRangeStream implements StreamInterface
         $this->position = $position;
     }
 
-    #[\Override]
     public function rewind(): void
     {
         $this->seek(0);
     }
 
-    #[\Override]
     public function isWritable(): bool
     {
         return false;
     }
 
-    #[\Override]
     public function write(string $string): int
     {
         throw new RuntimeException('Stream is not writable.');
     }
 
-    #[\Override]
     public function isReadable(): bool
     {
         return $this->stream->isReadable();
     }
 
-    #[\Override]
     public function read(int $length): string
     {
         if ($length < 0) {
@@ -143,7 +131,6 @@ final class ByteRangeStream implements StreamInterface
         return $contents;
     }
 
-    #[\Override]
     public function getContents(): string
     {
         $contents = [];
@@ -161,7 +148,6 @@ final class ByteRangeStream implements StreamInterface
         return implode('', $contents);
     }
 
-    #[\Override]
     public function getMetadata(?string $key = null)
     {
         return $this->stream->getMetadata($key);

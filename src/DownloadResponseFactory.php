@@ -227,7 +227,7 @@ final class DownloadResponseFactory
         [, $start, $end] = $matches;
 
         if ($start === '' && $end === '') {
-            return null;
+            return false;
         }
 
         if ($start === '') {

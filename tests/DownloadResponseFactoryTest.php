@@ -332,6 +332,29 @@ final class DownloadResponseFactoryTest extends TestCase
         $this->assertSame('abcdef', (string) $response->getBody());
     }
 
+    public function testSendContentAsFileWithEmptyMalformedRangeRequest(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=-'),
+            );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Length' => '6',
+            ],
+            $response,
+        );
+        $this->assertSame('', $response->getHeaderLine('Content-Range'));
+        $this->assertSame('abcdef', (string) $response->getBody());
+    }
+
     public function testSendFileWithUnsatisfiableRangeRequest(): void
     {
         $response = $this
