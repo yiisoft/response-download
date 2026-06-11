@@ -216,10 +216,6 @@ final class DownloadResponseFactory
 
         $range = $unitMatches[1];
 
-        if ($range === '' || str_contains($range, ',')) {
-            return false;
-        }
-
         if (!preg_match('/^(\d*)-(\d*)$/', $range, $matches)) {
             return false;
         }
@@ -237,7 +233,7 @@ final class DownloadResponseFactory
                 return null;
             }
 
-            if ($suffixLength >= $size) {
+            if ($suffixLength > $size) {
                 return $size === 0 ? null : [0, $size - 1];
             }
 
@@ -250,7 +246,11 @@ final class DownloadResponseFactory
             return null;
         }
 
-        $endPosition = $end === '' ? $size - 1 : (int) $end;
+        if ($end === '') {
+            return [$startPosition, $size - 1];
+        }
+
+        $endPosition = (int) $end;
 
         if ($endPosition < $startPosition) {
             return null;
@@ -281,10 +281,6 @@ final class DownloadResponseFactory
             ->withHeader(self::HEADER_CONTENT_LENGTH, (string) $size);
 
         $rangeHeader = trim($request->getHeaderLine(self::HEADER_RANGE));
-
-        if ($rangeHeader === '') {
-            return $response;
-        }
 
         $range = $this->parseByteRange($rangeHeader, $size);
 

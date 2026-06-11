@@ -11,6 +11,7 @@ use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\StreamInterface;
 use RuntimeException;
 use Yiisoft\Http\ContentDispositionHeader;
 use Yiisoft\ResponseDownload\DownloadResponseFactory;
@@ -161,6 +162,67 @@ final class DownloadResponseFactoryTest extends TestCase
         $this->assertSame('bcd', (string) $response->getBody());
     }
 
+    public function testSendStreamAsFileWithRangeRequestDoesNotSupportNonSeekableStream(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendStreamAsFile(
+                $this->createNonSeekableStream('abcdef'),
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=1-3'),
+            );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('', $response->getHeaderLine('Accept-Ranges'));
+        $this->assertSame('', $response->getHeaderLine('Content-Length'));
+        $this->assertSame('abcdef', (string) $response->getBody());
+    }
+
+    public function testSendStreamAsFileWithRequestWithoutRangeRewindsStream(): void
+    {
+        $stream = (new StreamFactory())->createStream('abcdef');
+        $stream->seek(3);
+
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendStreamAsFile(
+                $stream,
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest(),
+            );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Length' => '6',
+            ],
+            $response,
+        );
+        $this->assertSame('abcdef', (string) $response->getBody());
+    }
+
+    public function testSendStreamAsFileWithRequestWithoutRangeCanBeReadByEmitter(): void
+    {
+        $stream = (new StreamFactory())->createStream('abcdef');
+        $stream->seek(3);
+
+        $body = $this
+            ->getDownloadResponseFactory()
+            ->sendStreamAsFile(
+                $stream,
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest(),
+            )
+            ->getBody();
+
+        $this->assertSame('abc', $body->read(3));
+        $this->assertSame('def', $body->read(3));
+    }
+
     public static function dataSendFile(): array
     {
         $txtFilePath = self::getFilePath('answer.txt');
@@ -264,6 +326,29 @@ final class DownloadResponseFactoryTest extends TestCase
         $this->assertSame("x; }\n", (string) $response->getBody());
     }
 
+    public function testSendContentAsFileWithSingleByteRangeRequest(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=0-0'),
+            );
+
+        $this->assertSame(206, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes 0-0/6',
+                'Content-Length' => '1',
+            ],
+            $response,
+        );
+        $this->assertSame('a', (string) $response->getBody());
+    }
+
     public function testSendContentAsFileWithCaseInsensitiveRangeUnit(): void
     {
         $response = $this
@@ -308,6 +393,210 @@ final class DownloadResponseFactoryTest extends TestCase
             $response,
         );
         $this->assertSame('def', (string) $response->getBody());
+    }
+
+    public function testSendContentAsFileWithFullSuffixRangeRequest(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=-6'),
+            );
+
+        $this->assertSame(206, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes 0-5/6',
+                'Content-Length' => '6',
+            ],
+            $response,
+        );
+        $this->assertSame('abcdef', (string) $response->getBody());
+    }
+
+    public function testSendContentAsFileWithZeroSuffixRangeRequest(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=-0'),
+            );
+
+        $this->assertSame(416, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes */6',
+                'Content-Length' => '0',
+            ],
+            $response,
+        );
+        $this->assertSame('', (string) $response->getBody());
+    }
+
+    public function testSendContentAsFileWithRangeEndGreaterThanContentSize(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=4-99'),
+            );
+
+        $this->assertSame(206, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes 4-5/6',
+                'Content-Length' => '2',
+            ],
+            $response,
+        );
+        $this->assertSame('ef', (string) $response->getBody());
+    }
+
+    public function testSendContentAsFileWithWhitespaceAroundRangeRequest(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest(' bytes=1-3 '),
+            );
+
+        $this->assertSame(206, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes 1-3/6',
+                'Content-Length' => '3',
+            ],
+            $response,
+        );
+        $this->assertSame('bcd', (string) $response->getBody());
+    }
+
+    public function testSendContentAsFileWithRangeBodyReadByChunks(): void
+    {
+        $body = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=1-4'),
+            )
+            ->getBody();
+
+        $this->assertSame(4, $body->getSize());
+        $this->assertSame(0, $body->tell());
+        $this->assertSame('bc', $body->read(2));
+        $this->assertSame(2, $body->tell());
+        $this->assertFalse($body->eof());
+        $this->assertSame('de', $body->read(10));
+        $this->assertSame(4, $body->tell());
+        $this->assertTrue($body->eof());
+        $this->assertSame('', $body->read(1));
+    }
+
+    public function testSendContentAsFileWithRangeBodyCanSeekAndRewind(): void
+    {
+        $body = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=2-5'),
+            )
+            ->getBody();
+
+        $this->assertSame('c', $body->read(1));
+        $body->seek(2);
+        $this->assertSame('e', $body->read(1));
+        $body->seek(-1, SEEK_END);
+        $this->assertSame('f', $body->read(1));
+        $body->rewind();
+        $this->assertSame('cdef', $body->getContents());
+    }
+
+    public function testSendContentAsFileWithRangeBodyCanSeekFromCurrentPosition(): void
+    {
+        $body = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=1-5'),
+            )
+            ->getBody();
+
+        $this->assertSame('b', $body->read(1));
+        $body->seek(2, SEEK_CUR);
+        $this->assertSame('e', $body->read(1));
+    }
+
+    public function testSendContentAsFileWithRangeBodyCanSeekToEnd(): void
+    {
+        $body = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=1-5'),
+            )
+            ->getBody();
+
+        $body->seek(0, SEEK_END);
+
+        $this->assertSame(5, $body->tell());
+        $this->assertTrue($body->eof());
+        $this->assertSame('', $body->read(1));
+    }
+
+    public function testSendContentAsFileWithRangeBodyStringCastRewindsBody(): void
+    {
+        $body = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=1-4'),
+            )
+            ->getBody();
+
+        $this->assertSame('bc', $body->read(2));
+        $this->assertSame('bcde', (string) $body);
+    }
+
+    public function testSendContentAsFileWithRangeBodyZeroLengthRead(): void
+    {
+        $body = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=1-4'),
+            )
+            ->getBody();
+
+        $this->assertSame('', $body->read(0));
+        $this->assertSame(0, $body->tell());
     }
 
     public function testSendContentAsFileWithUnsupportedRangeRequest(): void
@@ -358,6 +647,38 @@ final class DownloadResponseFactoryTest extends TestCase
         $this->assertSame('abcdef', (string) $response->getBody());
     }
 
+    public function testSendContentAsFileWithMalformedRangeRequestPrefix(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=foo1-3'),
+            );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('', $response->getHeaderLine('Content-Range'));
+        $this->assertSame('abcdef', (string) $response->getBody());
+    }
+
+    public function testSendContentAsFileWithMalformedRangeRequestSuffix(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=1-3foo'),
+            );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('', $response->getHeaderLine('Content-Range'));
+        $this->assertSame('abcdef', (string) $response->getBody());
+    }
+
     public function testSendContentAsFileWithEmptyMalformedRangeRequest(): void
     {
         $response = $this
@@ -381,6 +702,52 @@ final class DownloadResponseFactoryTest extends TestCase
         $this->assertSame('abcdef', (string) $response->getBody());
     }
 
+    public function testSendContentAsFileWithSuffixRangeRequestGreaterThanContentSize(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=-99'),
+            );
+
+        $this->assertSame(206, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes 0-5/6',
+                'Content-Length' => '6',
+            ],
+            $response,
+        );
+        $this->assertSame('abcdef', (string) $response->getBody());
+    }
+
+    public function testSendContentAsFileWithRangeRequestForEmptyContent(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                '',
+                'empty.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=-1'),
+            );
+
+        $this->assertSame(416, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes */0',
+                'Content-Length' => '0',
+            ],
+            $response,
+        );
+        $this->assertSame('', (string) $response->getBody());
+    }
+
     public function testSendFileWithUnsatisfiableRangeRequest(): void
     {
         $response = $this
@@ -392,6 +759,29 @@ final class DownloadResponseFactoryTest extends TestCase
             [
                 'Accept-Ranges' => 'bytes',
                 'Content-Range' => 'bytes */3',
+                'Content-Length' => '0',
+            ],
+            $response,
+        );
+        $this->assertSame('', (string) $response->getBody());
+    }
+
+    public function testSendContentAsFileWithExplicitRangeStartingAtContentSize(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=6-6'),
+            );
+
+        $this->assertSame(416, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes */6',
                 'Content-Length' => '0',
             ],
             $response,
@@ -478,6 +868,97 @@ final class DownloadResponseFactoryTest extends TestCase
         $request = (new ServerRequestFactory())->createServerRequest('GET', '/');
 
         return $range === null ? $request : $request->withHeader('Range', $range);
+    }
+
+    private function createNonSeekableStream(string $content): StreamInterface
+    {
+        return new class ($content) implements StreamInterface {
+            private int $position = 0;
+
+            public function __construct(private readonly string $content)
+            {
+            }
+
+            public function __toString(): string
+            {
+                return $this->content;
+            }
+
+            public function close(): void
+            {
+            }
+
+            public function detach()
+            {
+                return null;
+            }
+
+            public function getSize(): ?int
+            {
+                return strlen($this->content);
+            }
+
+            public function tell(): int
+            {
+                return $this->position;
+            }
+
+            public function eof(): bool
+            {
+                return $this->position >= strlen($this->content);
+            }
+
+            public function isSeekable(): bool
+            {
+                return false;
+            }
+
+            public function seek(int $offset, int $whence = SEEK_SET): void
+            {
+                throw new RuntimeException('Stream is not seekable.');
+            }
+
+            public function rewind(): void
+            {
+                throw new RuntimeException('Stream is not seekable.');
+            }
+
+            public function isWritable(): bool
+            {
+                return false;
+            }
+
+            public function write(string $string): int
+            {
+                throw new RuntimeException('Stream is not writable.');
+            }
+
+            public function isReadable(): bool
+            {
+                return true;
+            }
+
+            public function read(int $length): string
+            {
+                $contents = substr($this->content, $this->position, $length);
+                $this->position += strlen($contents);
+
+                return $contents;
+            }
+
+            public function getContents(): string
+            {
+                $contents = substr($this->content, $this->position);
+                $this->position = strlen($this->content);
+
+                return $contents;
+            }
+
+            public function getMetadata(?string $key = null)
+            {
+                return $key === null ? [] : null;
+            }
+        };
     }
 
     private static function getFilePath(string $fileName): string
