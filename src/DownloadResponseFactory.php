@@ -24,10 +24,6 @@ final class DownloadResponseFactory
      * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types#applicationoctet-stream
      */
     private const MIME_APPLICATION_OCTET_STREAM = 'application/octet-stream';
-    private const HEADER_ACCEPT_RANGES = 'Accept-Ranges';
-    private const HEADER_CONTENT_LENGTH = 'Content-Length';
-    private const HEADER_CONTENT_RANGE = 'Content-Range';
-    private const HEADER_RANGE = 'Range';
     private const RANGE_UNIT_BYTES = 'bytes';
 
     /**
@@ -139,7 +135,7 @@ final class DownloadResponseFactory
             )
             ->withBody($stream);
 
-        return $this->withRangeSupport($response, $stream, $request);
+        return $this->processRange($response, $stream, $request);
     }
 
     /**
@@ -259,7 +255,7 @@ final class DownloadResponseFactory
         return [$startPosition, min($endPosition, $size - 1)];
     }
 
-    private function withRangeSupport(
+    private function processRange(
         ResponseInterface $response,
         StreamInterface $stream,
         ?ServerRequestInterface $request,
@@ -270,17 +266,17 @@ final class DownloadResponseFactory
 
         $size = $stream->getSize();
 
-        if ($size === null || !$stream->isSeekable()) {
+        if ($size === null || !$stream->isSeekable() || !$stream->isReadable()) {
             return $response;
         }
 
         $stream->rewind();
 
         $response = $response
-            ->withHeader(self::HEADER_ACCEPT_RANGES, self::RANGE_UNIT_BYTES)
-            ->withHeader(self::HEADER_CONTENT_LENGTH, (string) $size);
+            ->withHeader(Header::ACCEPT_RANGES, self::RANGE_UNIT_BYTES)
+            ->withHeader(Header::CONTENT_LENGTH, (string) $size);
 
-        $rangeHeader = trim($request->getHeaderLine(self::HEADER_RANGE));
+        $rangeHeader = trim($request->getHeaderLine(Header::RANGE));
 
         $range = $this->parseByteRange($rangeHeader, $size);
 
@@ -291,8 +287,8 @@ final class DownloadResponseFactory
         if ($range === null) {
             return $response
                 ->withStatus(416)
-                ->withHeader(self::HEADER_CONTENT_RANGE, self::RANGE_UNIT_BYTES . ' */' . $size)
-                ->withHeader(self::HEADER_CONTENT_LENGTH, '0')
+                ->withHeader(Header::CONTENT_RANGE, self::RANGE_UNIT_BYTES . ' */' . $size)
+                ->withHeader(Header::CONTENT_LENGTH, '0')
                 ->withBody($this->streamFactory->createStream());
         }
 
@@ -302,10 +298,10 @@ final class DownloadResponseFactory
         return $response
             ->withStatus(206)
             ->withHeader(
-                self::HEADER_CONTENT_RANGE,
+                Header::CONTENT_RANGE,
                 sprintf('%s %d-%d/%d', self::RANGE_UNIT_BYTES, $start, $end, $size),
             )
-            ->withHeader(self::HEADER_CONTENT_LENGTH, (string) $length)
+            ->withHeader(Header::CONTENT_LENGTH, (string) $length)
             ->withBody(new ByteRangeStream($stream, $start, $end));
     }
 

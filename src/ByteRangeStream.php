@@ -23,7 +23,7 @@ final class ByteRangeStream implements StreamInterface
     public function __construct(
         private readonly StreamInterface $stream,
         private readonly int $start,
-        private readonly int $end,
+        int $end,
     ) {
         if ($start < 0 || $end < $start) {
             throw new RuntimeException('Invalid byte range.');
@@ -31,6 +31,10 @@ final class ByteRangeStream implements StreamInterface
 
         if (!$stream->isSeekable()) {
             throw new RuntimeException('Stream is not seekable.');
+        }
+
+        if (!$stream->isReadable()) {
+            throw new RuntimeException('Stream is not readable.');
         }
 
         $this->size = $end - $start + 1;
@@ -74,7 +78,7 @@ final class ByteRangeStream implements StreamInterface
 
     public function isSeekable(): bool
     {
-        return $this->stream->isSeekable();
+        return true;
     }
 
     public function seek(int $offset, int $whence = SEEK_SET): void
@@ -111,7 +115,7 @@ final class ByteRangeStream implements StreamInterface
 
     public function isReadable(): bool
     {
-        return $this->stream->isReadable();
+        return true;
     }
 
     public function read(int $length): string

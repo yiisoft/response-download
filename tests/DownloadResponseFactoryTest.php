@@ -179,6 +179,23 @@ final class DownloadResponseFactoryTest extends TestCase
         $this->assertSame('abcdef', (string) $response->getBody());
     }
 
+    public function testSendStreamAsFileWithRangeRequestDoesNotSupportNonReadableStream(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendStreamAsFile(
+                $this->createNonReadableSeekableStream('abcdef'),
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=1-3'),
+            );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('', $response->getHeaderLine('Accept-Ranges'));
+        $this->assertSame('', $response->getHeaderLine('Content-Length'));
+        $this->assertSame('abcdef', (string) $response->getBody());
+    }
+
     public function testSendStreamAsFileWithRequestWithoutRangeRewindsStream(): void
     {
         $stream = (new StreamFactory())->createStream('abcdef');
@@ -952,6 +969,102 @@ final class DownloadResponseFactoryTest extends TestCase
                 $this->position = strlen($this->content);
 
                 return $contents;
+            }
+
+            public function getMetadata(?string $key = null)
+            {
+                return $key === null ? [] : null;
+            }
+        };
+    }
+
+    private function createNonReadableSeekableStream(string $content): StreamInterface
+    {
+        return new class ($content) implements StreamInterface {
+            private int $position = 0;
+
+            public function __construct(private readonly string $content)
+            {
+            }
+
+            public function __toString(): string
+            {
+                return $this->content;
+            }
+
+            public function close(): void
+            {
+            }
+
+            public function detach()
+            {
+                return null;
+            }
+
+            public function getSize(): ?int
+            {
+                return strlen($this->content);
+            }
+
+            public function tell(): int
+            {
+                return $this->position;
+            }
+
+            public function eof(): bool
+            {
+                return $this->position >= strlen($this->content);
+            }
+
+            public function isSeekable(): bool
+            {
+                return true;
+            }
+
+            public function seek(int $offset, int $whence = SEEK_SET): void
+            {
+                $position = match ($whence) {
+                    SEEK_SET => $offset,
+                    SEEK_CUR => $this->position + $offset,
+                    SEEK_END => strlen($this->content) + $offset,
+                    default => throw new RuntimeException('Invalid seek mode.'),
+                };
+
+                if ($position < 0 || $position > strlen($this->content)) {
+                    throw new RuntimeException('Invalid seek offset.');
+                }
+
+                $this->position = $position;
+            }
+
+            public function rewind(): void
+            {
+                $this->seek(0);
+            }
+
+            public function isWritable(): bool
+            {
+                return false;
+            }
+
+            public function write(string $string): int
+            {
+                throw new RuntimeException('Stream is not writable.');
+            }
+
+            public function isReadable(): bool
+            {
+                return false;
+            }
+
+            public function read(int $length): string
+            {
+                throw new RuntimeException('Stream is not readable.');
+            }
+
+            public function getContents(): string
+            {
+                throw new RuntimeException('Stream is not readable.');
             }
 
             public function getMetadata(?string $key = null)
