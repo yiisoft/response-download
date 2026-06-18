@@ -8,6 +8,7 @@ use finfo;
 use InvalidArgumentException;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\StreamInterface;
 use Yiisoft\Http\ContentDispositionHeader;
@@ -23,6 +24,7 @@ final class DownloadResponseFactory
      * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types#applicationoctet-stream
      */
     private const MIME_APPLICATION_OCTET_STREAM = 'application/octet-stream';
+    private const RANGE_UNIT_BYTES = 'bytes';
 
     /**
      * @param ResponseFactoryInterface $responseFactory PSR-17 compatible response factory
@@ -110,6 +112,8 @@ final class DownloadResponseFactory
      * @param string $disposition Content disposition. Either {@see ContentDispositionHeader::ATTACHMENT}
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string $mimeType The MIME type of the content. Default is {@see MIME_APPLICATION_OCTET_STREAM}.
+     * @param ServerRequestInterface|null $request The request to read the `Range` header from. If `null`, range
+     * requests are not handled.
      *
      * @return ResponseInterface PSR-7 compatible response
      * (@see https://www.php-fig.org/psr/psr-7/#33-psrhttpmessageresponseinterface).
@@ -119,16 +123,19 @@ final class DownloadResponseFactory
         string $attachmentName,
         string $disposition = ContentDispositionHeader::ATTACHMENT,
         string $mimeType = self::MIME_APPLICATION_OCTET_STREAM,
+        ?ServerRequestInterface $request = null,
     ): ResponseInterface {
         $this->assertDisposition($disposition);
 
-        return $this->responseFactory->createResponse()
+        $response = $this->responseFactory->createResponse()
             ->withHeader(Header::CONTENT_TYPE, $mimeType)
             ->withHeader(
                 ContentDispositionHeader::name(),
                 ContentDispositionHeader::value($disposition, $attachmentName),
             )
             ->withBody($stream);
+
+        return $this->processRange($response, $stream, $request);
     }
 
     /**
@@ -141,6 +148,8 @@ final class DownloadResponseFactory
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the file
      * content ({@see $filePath}).
+     * @param ServerRequestInterface|null $request The request to read the `Range` header from. If `null`, range
+     * requests are not handled.
      *
      * @return ResponseInterface PSR-7 compatible response
      * (@see https://www.php-fig.org/psr/psr-7/#33-psrhttpmessageresponseinterface).
@@ -150,12 +159,14 @@ final class DownloadResponseFactory
         ?string $attachmentName = null,
         string $disposition = ContentDispositionHeader::ATTACHMENT,
         ?string $mimeType = null,
+        ?ServerRequestInterface $request = null,
     ): ResponseInterface {
         return $this->sendStreamAsFile(
             stream: $this->streamFactory->createStreamFromFile($filePath),
             attachmentName: $attachmentName ?? basename($filePath),
             disposition: $disposition,
             mimeType: $mimeType ?? $this->getFileMimeType($filePath),
+            request: $request,
         );
     }
 
@@ -168,6 +179,8 @@ final class DownloadResponseFactory
      * or {@see ContentDispositionHeader::INLINE}. Default is {@see ContentDispositionHeader::ATTACHMENT}.
      * @param string|null $mimeType The MIME type of the content. If not set, it will be guessed based on the
      * {@see $content}.
+     * @param ServerRequestInterface|null $request The request to read the `Range` header from. If `null`, range
+     * requests are not handled.
      *
      * @return ResponseInterface PSR-7 compatible response
      * (@see https://www.php-fig.org/psr/psr-7/#33-psrhttpmessageresponseinterface).
@@ -177,13 +190,119 @@ final class DownloadResponseFactory
         string $attachmentName,
         string $disposition = ContentDispositionHeader::ATTACHMENT,
         ?string $mimeType = null,
+        ?ServerRequestInterface $request = null,
     ): ResponseInterface {
         return $this->sendStreamAsFile(
             stream: $this->streamFactory->createStream($content),
             attachmentName: $attachmentName,
             disposition: $disposition,
             mimeType: $mimeType ?? $this->getContentMimeType($content),
+            request: $request,
         );
+    }
+
+    /**
+     * @return array{int, int}|false|null `false` means unsupported range, `null` means unsatisfiable range.
+     */
+    private function parseByteRange(string $rangeHeader, int $size): array|false|null
+    {
+        if (!preg_match('/^' . self::RANGE_UNIT_BYTES . '=(.*)$/i', $rangeHeader, $unitMatches)) {
+            return false;
+        }
+
+        $range = $unitMatches[1];
+
+        if (!preg_match('/^(\d*)-(\d*)$/', $range, $matches)) {
+            return false;
+        }
+
+        [, $start, $end] = $matches;
+
+        if ($start === '' && $end === '') {
+            return false;
+        }
+
+        if ($start === '') {
+            $suffixLength = (int) $end;
+
+            if ($suffixLength <= 0) {
+                return null;
+            }
+
+            if ($suffixLength > $size) {
+                return $size === 0 ? null : [0, $size - 1];
+            }
+
+            return [$size - $suffixLength, $size - 1];
+        }
+
+        $startPosition = (int) $start;
+
+        if ($startPosition >= $size) {
+            return null;
+        }
+
+        if ($end === '') {
+            return [$startPosition, $size - 1];
+        }
+
+        $endPosition = (int) $end;
+
+        if ($endPosition < $startPosition) {
+            return null;
+        }
+
+        return [$startPosition, min($endPosition, $size - 1)];
+    }
+
+    private function processRange(
+        ResponseInterface $response,
+        StreamInterface $stream,
+        ?ServerRequestInterface $request,
+    ): ResponseInterface {
+        if ($request === null) {
+            return $response;
+        }
+
+        $size = $stream->getSize();
+
+        if ($size === null || !$stream->isSeekable() || !$stream->isReadable()) {
+            return $response;
+        }
+
+        $stream->rewind();
+
+        $response = $response
+            ->withHeader(Header::ACCEPT_RANGES, self::RANGE_UNIT_BYTES)
+            ->withHeader(Header::CONTENT_LENGTH, (string) $size);
+
+        $rangeHeader = trim($request->getHeaderLine(Header::RANGE));
+
+        $range = $this->parseByteRange($rangeHeader, $size);
+
+        if ($range === false) {
+            return $response;
+        }
+
+        if ($range === null) {
+            return $response
+                ->withStatus(416)
+                ->withHeader(Header::CONTENT_RANGE, self::RANGE_UNIT_BYTES . ' */' . $size)
+                ->withHeader(Header::CONTENT_LENGTH, '0')
+                ->withBody($this->streamFactory->createStream());
+        }
+
+        [$start, $end] = $range;
+        $length = $end - $start + 1;
+
+        return $response
+            ->withStatus(206)
+            ->withHeader(
+                Header::CONTENT_RANGE,
+                sprintf('%s %d-%d/%d', self::RANGE_UNIT_BYTES, $start, $end, $size),
+            )
+            ->withHeader(Header::CONTENT_LENGTH, (string) $length)
+            ->withBody(new ByteRangeStream($stream, $start, $end));
     }
 
     /**
