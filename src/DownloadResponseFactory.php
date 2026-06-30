@@ -332,13 +332,8 @@ final class DownloadResponseFactory
     private function getContentMimeType(string $content): string
     {
         $info = new finfo(FILEINFO_MIME_TYPE);
-        $mimeType = @$info->buffer($content);
 
-        if (!$mimeType) {
-            $mimeType = self::MIME_APPLICATION_OCTET_STREAM;
-        }
-
-        return $mimeType;
+        return @$info->buffer($content) ?: self::MIME_APPLICATION_OCTET_STREAM;
     }
 
     /**
