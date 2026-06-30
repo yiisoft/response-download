@@ -14,6 +14,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use RuntimeException;
 use Yiisoft\Http\ContentDispositionHeader;
+use Yiisoft\ResponseDownload\ByteRangeStream;
 use Yiisoft\ResponseDownload\DownloadResponseFactory;
 
 final class DownloadResponseFactoryTest extends TestCase
@@ -804,6 +805,156 @@ final class DownloadResponseFactoryTest extends TestCase
             $response,
         );
         $this->assertSame('', (string) $response->getBody());
+    }
+
+    public function testSendContentAsFileWithRangeEndBeforeRangeStart(): void
+    {
+        $response = $this
+            ->getDownloadResponseFactory()
+            ->sendContentAsFile(
+                'abcdef',
+                'alphabet.txt',
+                mimeType: 'text/plain',
+                request: $this->createRequest('bytes=4-2'),
+            );
+
+        $this->assertSame(416, $response->getStatusCode());
+        $this->assertResponseHeaders(
+            [
+                'Accept-Ranges' => 'bytes',
+                'Content-Range' => 'bytes */6',
+                'Content-Length' => '0',
+            ],
+            $response,
+        );
+        $this->assertSame('', (string) $response->getBody());
+    }
+
+    public function testByteRangeStreamRejectsInvalidRange(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Invalid byte range.');
+
+        new ByteRangeStream((new StreamFactory())->createStream('abcdef'), 3, 2);
+    }
+
+    public function testByteRangeStreamRejectsNonSeekableStream(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Stream is not seekable.');
+
+        new ByteRangeStream($this->createNonSeekableStream('abcdef'), 1, 3);
+    }
+
+    public function testByteRangeStreamRejectsNonReadableStream(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Stream is not readable.');
+
+        new ByteRangeStream($this->createNonReadableSeekableStream('abcdef'), 1, 3);
+    }
+
+    public function testByteRangeStreamRejectsInvalidSeekMode(): void
+    {
+        $body = new ByteRangeStream((new StreamFactory())->createStream('abcdef'), 1, 3);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Invalid seek mode.');
+
+        $body->seek(0, 999);
+    }
+
+    public function testByteRangeStreamRejectsInvalidSeekOffset(): void
+    {
+        $body = new ByteRangeStream((new StreamFactory())->createStream('abcdef'), 1, 3);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Invalid seek offset.');
+
+        $body->seek(4);
+    }
+
+    public function testByteRangeStreamRejectsNegativeReadLength(): void
+    {
+        $body = new ByteRangeStream((new StreamFactory())->createStream('abcdef'), 1, 3);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Length parameter cannot be negative.');
+
+        $body->read(-1);
+    }
+
+    public function testByteRangeStreamRejectsWrite(): void
+    {
+        $body = new ByteRangeStream((new StreamFactory())->createStream('abcdef'), 1, 3);
+
+        $this->assertFalse($body->isWritable());
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Stream is not writable.');
+
+        $body->write('x');
+    }
+
+    public function testByteRangeStreamDelegatesCloseDetachAndMetadata(): void
+    {
+        $resource = fopen('php://memory', 'rb');
+        $stream = $this->createMock(StreamInterface::class);
+        $stream->method('isSeekable')->willReturn(true);
+        $stream->method('isReadable')->willReturn(true);
+        $stream->expects($this->once())->method('seek')->with(1);
+        $stream->expects($this->once())->method('close');
+        $stream->expects($this->once())->method('detach')->willReturn($resource);
+        $stream->expects($this->exactly(2))
+            ->method('getMetadata')
+            ->willReturnMap(
+                [
+                    [null, ['uri' => 'php://memory']],
+                    ['uri', 'php://memory'],
+                ],
+            );
+
+        $body = new ByteRangeStream($stream, 1, 3);
+
+        $this->assertTrue($body->isSeekable());
+        $this->assertTrue($body->isReadable());
+        $this->assertSame(['uri' => 'php://memory'], $body->getMetadata());
+        $this->assertSame('php://memory', $body->getMetadata('uri'));
+        $this->assertSame($resource, $body->detach());
+
+        $body->close();
+        fclose($resource);
+    }
+
+    public function testByteRangeStreamStringCastReturnsEmptyStringOnFailure(): void
+    {
+        $calls = 0;
+        $stream = $this->createMock(StreamInterface::class);
+        $stream->method('isSeekable')->willReturn(true);
+        $stream->method('isReadable')->willReturn(true);
+        $stream->method('seek')->willReturnCallback(
+            static function () use (&$calls): void {
+                if (++$calls > 1) {
+                    throw new RuntimeException('Unable to seek.');
+                }
+            },
+        );
+
+        $body = new ByteRangeStream($stream, 1, 3);
+
+        $this->assertSame('', (string) $body);
+    }
+
+    public function testByteRangeStreamGetContentsStopsWhenUnderlyingStreamReturnsEmptyChunk(): void
+    {
+        $stream = $this->createMock(StreamInterface::class);
+        $stream->method('isSeekable')->willReturn(true);
+        $stream->method('isReadable')->willReturn(true);
+        $stream->method('eof')->willReturn(false);
+        $stream->method('read')->willReturn('');
+
+        $body = new ByteRangeStream($stream, 1, 3);
+
+        $this->assertSame('', $body->getContents());
     }
 
     public static function dataSendContentAsFile(): array
