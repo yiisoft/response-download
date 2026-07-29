@@ -14,6 +14,10 @@ use Psr\Http\Message\StreamInterface;
 use Yiisoft\Http\ContentDispositionHeader;
 use Yiisoft\Http\Header;
 
+use function sprintf;
+
+use const FILEINFO_MIME_TYPE;
+
 /**
  * Provides multiple methods for creating PSR-7 compatible response with downloadable content.
  */
@@ -35,8 +39,7 @@ final class DownloadResponseFactory
     public function __construct(
         private readonly ResponseFactoryInterface $responseFactory,
         private readonly StreamFactoryInterface $streamFactory,
-    ) {
-    }
+    ) {}
 
     /**
      * Forms a response that sends existing file to a browser as a download using `x-sendfile`.
@@ -346,8 +349,8 @@ final class DownloadResponseFactory
     private function assertDisposition(string $disposition): void
     {
         if (
-            $disposition !== ContentDispositionHeader::ATTACHMENT &&
-            $disposition !== ContentDispositionHeader::INLINE
+            $disposition !== ContentDispositionHeader::ATTACHMENT
+            && $disposition !== ContentDispositionHeader::INLINE
         ) {
             throw new InvalidArgumentException(sprintf(
                 'Disposition value must be either "%s" or "%s", "%s" given.',

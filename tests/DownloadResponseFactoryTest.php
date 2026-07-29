@@ -17,6 +17,14 @@ use Yiisoft\Http\ContentDispositionHeader;
 use Yiisoft\ResponseDownload\ByteRangeStream;
 use Yiisoft\ResponseDownload\DownloadResponseFactory;
 
+use function strlen;
+
+use const DIRECTORY_SEPARATOR;
+use const PHP_VERSION_ID;
+use const SEEK_CUR;
+use const SEEK_END;
+use const SEEK_SET;
+
 final class DownloadResponseFactoryTest extends TestCase
 {
     public static function dataXSendFile(): array
@@ -1043,18 +1051,14 @@ final class DownloadResponseFactoryTest extends TestCase
         return new class ($content) implements StreamInterface {
             private int $position = 0;
 
-            public function __construct(private readonly string $content)
-            {
-            }
+            public function __construct(private readonly string $content) {}
 
             public function __toString(): string
             {
                 return $this->content;
             }
 
-            public function close(): void
-            {
-            }
+            public function close(): void {}
 
             public function detach()
             {
@@ -1134,18 +1138,14 @@ final class DownloadResponseFactoryTest extends TestCase
         return new class ($content) implements StreamInterface {
             private int $position = 0;
 
-            public function __construct(private readonly string $content)
-            {
-            }
+            public function __construct(private readonly string $content) {}
 
             public function __toString(): string
             {
                 return $this->content;
             }
 
-            public function close(): void
-            {
-            }
+            public function close(): void {}
 
             public function detach()
             {
@@ -1233,8 +1233,8 @@ final class DownloadResponseFactoryTest extends TestCase
     private function expectWrongDisposition(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $message = 'Disposition value must be either "Yiisoft\Http\ContentDispositionHeader::ATTACHMENT" or ' .
-            '"Yiisoft\Http\ContentDispositionHeader::INLINE", "a" given.';
+        $message = 'Disposition value must be either "Yiisoft\Http\ContentDispositionHeader::ATTACHMENT" or '
+            . '"Yiisoft\Http\ContentDispositionHeader::INLINE", "a" given.';
         $this->expectExceptionMessage($message);
     }
 
