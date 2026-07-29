@@ -8,6 +8,8 @@ use Psr\Http\Message\StreamInterface;
 use RuntimeException;
 use Throwable;
 
+use function strlen;
+
 use const SEEK_CUR;
 use const SEEK_END;
 use const SEEK_SET;
