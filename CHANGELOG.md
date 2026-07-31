@@ -3,6 +3,7 @@
 ## 1.1.1 under development
 
 - New #2: Add range request support (@samdark)
+- Enh #38: Explicitly import functions and constants in "use" section (@vjik)
 
 ## 1.1.0 April 09, 2026
 
